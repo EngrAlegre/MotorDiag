@@ -37,11 +37,7 @@ export function Header() {
         </Link>
         
         <nav className="flex flex-1 items-center space-x-4 lg:space-x-6">
-          {currentUser && (
-            <Button variant="ghost" asChild>
-              <Link href="/">Dashboard</Link>
-            </Button>
-          )}
+          {/* Dashboard link removed from here */}
         </nav>
 
         <div className="flex items-center space-x-4">

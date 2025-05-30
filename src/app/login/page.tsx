@@ -7,7 +7,8 @@ import type { z } from 'zod';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// Label import removed as FormLabel is used
+// Checkbox import removed
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +25,7 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
+      // agreedToTerms removed
     },
   });
 
@@ -77,9 +79,15 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
+              {/* agreedToTerms FormField removed */}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Signing In...' : 'Sign In'}
               </Button>
+              <div className="text-center mt-4">
+                <Button variant="link" asChild className="p-0 h-auto text-sm">
+                  <Link href="/forgot-password" onClick={() => setError(null)}>Forgot Password?</Link>
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>
@@ -89,12 +97,6 @@ export default function LoginPage() {
             <Button variant="link" asChild className="p-0 h-auto">
               <Link href="/signup" onClick={() => setError(null)}>Sign Up</Link>
             </Button>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            By signing in, you agree to our{' '}
-            <Button variant="link" asChild className="p-0 h-auto text-xs">
-              <Link href="/user-agreement">User Agreement</Link>
-            </Button>.
           </p>
         </CardFooter>
       </Card>

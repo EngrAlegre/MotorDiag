@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/Header';
@@ -37,8 +38,7 @@ async function fetchUserMotorcycles(userId: string | undefined): Promise<{ id: s
         const data = snapshot.val();
         const motorcyclesArray = Object.keys(data).map(key => ({
           id: key,
-          name: data[key].name || `Motorcycle ${key}`, // Assuming 'name' is a field in your motorcycle data
-          // Add other motorcycle details here if needed
+          name: data[key].name || `${data[key].make || ''} ${data[key].model || ''}`.trim() || `Motorcycle ${key}`, // Use make/model for name if available
         }));
         resolve(motorcyclesArray);
       } else {
@@ -86,7 +86,6 @@ export default function HomePage() { // Renamed to HomePage to avoid confusion
   useEffect(() => {
     const loadMotorcycles = async () => {
       if (!currentUser) {
-        // Wait for user to be loaded by ProtectedRoute or AuthContext
         setLoadingMotorcycles(authLoading);
         return;
       }
@@ -104,7 +103,7 @@ export default function HomePage() { // Renamed to HomePage to avoid confusion
     };
 
     loadMotorcycles();
-  }, [currentUser, authLoading]); // Depend on currentUser and authLoading
+  }, [currentUser, authLoading]);
 
 
   return (
@@ -113,11 +112,11 @@ export default function HomePage() { // Renamed to HomePage to avoid confusion
         <Header />
         <main className="flex-1 p-4 md:p-8">
           <div className="container mx-auto max-w-7xl">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-8">My Motorcycles</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8">My Motorcycles</h1>
 
             {/* Features Overview Section */}
             <section className="mb-12">
-              <h2 className="text-2xl font-semibold mb-6">Features Overview</h2>
+              <h2 className="text-xl md:text-2xl font-semibold mb-6">Features Overview</h2>
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {/* Feature Card: Real-Time Monitoring */}
                 <div className="min-w-[220px] bg-card rounded-lg shadow p-4 flex flex-col items-center">
@@ -174,13 +173,21 @@ export default function HomePage() { // Renamed to HomePage to avoid confusion
 
             {!loadingMotorcycles && !errorFetchingMotorcycles && (
               motorcycles.length === 0 ? (
-                <p>No motorcycles added yet. Add your first motorcycle!</p>
+                <Card className="text-center p-6">
+                  <CardTitle className="text-lg mb-2">No Motorcycles Added Yet</CardTitle>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4">Get started by adding your first motorcycle to monitor its health and diagnostics.</p>
+                    <Button asChild>
+                      <Link href="/add-motorcycle">Add New Motorcycle</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {motorcycles.map((motorcycle) => (
                     <Card key={motorcycle.id}>
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle>{motorcycle.name}</CardTitle>
+                        <CardTitle className="text-lg">{motorcycle.name}</CardTitle>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
@@ -212,24 +219,24 @@ export default function HomePage() { // Renamed to HomePage to avoid confusion
               )
             )}
 
+            {motorcycles.length > 0 && ( // Only show Add button here if motorcycles exist, else it's in the empty state card
             <div className="mt-8">
               <Link href="/add-motorcycle" passHref>
                 <Button>Add New Motorcycle</Button>
               </Link>
             </div>
+            )}
 
           </div>
         </main>
         <footer className="py-6 md:px-8 md:py-0 border-t mt-auto">
-            <div className="container flex flex-col items-center justify-center gap-4 md:h-24 md:flex-row">\
-              <p className="text-balance text-center text-sm leading-loose text-muted-foreground">\
-                Built with passion for motorcycles. © {new Date().getFullYear()} MotoVision.\
-              </p>\
-            </div>\
-          </footer>\
+            <div className="container flex flex-col items-center justify-center gap-4 md:h-24 md:flex-row">
+              <p className="text-balance text-center text-sm leading-loose text-muted-foreground">
+                Built with passion for motorcycles. © {new Date().getFullYear()} MotoVision.
+              </p>
+            </div>
+          </footer>
       </div>
     </ProtectedRoute>
   );
 }
-
-// Removed CardSkeleton as it's no longer needed on this page

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/Header';
@@ -9,7 +10,7 @@ import type { DiagnosticData, DiagnosticStatus } from '@/lib/types';
 import { DiagnosticStatus as StatusEnum } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, Activity, AlertTriangle } from "lucide-react";
+import { Terminal, Info, Activity, AlertTriangle, ChevronLeft } from "lucide-react"; // Added ChevronLeft
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams } from 'next/navigation';
@@ -17,6 +18,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { ref, set, update } from 'firebase/database';
 import { db as firebaseDB } from '@/lib/firebase';
+import Link from 'next/link'; // Added Link
 
 export default function MotorcycleDashboardPage() {
   const { currentUser } = useAuth();
@@ -24,42 +26,33 @@ export default function MotorcycleDashboardPage() {
   const motorcycleId = params.motorcycleId as string;
 
   const { currentData, error, setCurrentData } = useFirebaseDiagnostics(motorcycleId);
-  const isLoading = !currentData.dataValid && !error;
+  const isLoading = !currentData.dataValid && !error && !currentData.timestamp; // Refined isLoading
   const showData = currentData.dataValid && !error;
 
-  // Determine the path for display in the \"Waiting for Data\" message.
   const firebasePath = `users/${currentUser?.uid || '[user-id]'}/motorcycles/${motorcycleId}/latest`;
 
-  // Type guard for statusKey
-  function hasStatusKey(item: any): item is { statusKey: string } {
-    return 'statusKey' in item;
-  }
-  // Type guard for isOverallStatus
-  function hasIsOverallStatus(item: any): item is { isOverallStatus: boolean } {
-    return 'isOverallStatus' in item;
-  }
-
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
-
-  // Get all available parameters
   const availableParameters = Object.keys(currentData.parameters || {});
 
-  // Update selected parameters when new ones are detected
   useEffect(() => {
-    setSelectedParameters(prev => {
-      const newParams = availableParameters.filter(p => !prev.includes(p));
-      if (newParams.length === 0) return prev; // Prevent unnecessary update
-      return [...prev, ...newParams];
-    });
-  }, [availableParameters]);
+    // Auto-select all available parameters initially or when new ones are detected
+    if (availableParameters.length > 0) {
+      const newParams = availableParameters.filter(p => !selectedParameters.includes(p));
+      if (newParams.length > 0 || selectedParameters.length === 0 && availableParameters.length > 0) { // Ensure initial selection
+         setSelectedParameters(prev => {
+            const updatedSelection = [...new Set([...prev, ...availableParameters])]; // Use Set to avoid duplicates and ensure all current are included
+            return updatedSelection;
+        });
+      }
+    }
+  }, [availableParameters, selectedParameters]); // Added selectedParameters to dependency array
 
   const handleClearDTCs = async () => {
     if (!currentUser) return;
     
     try {
       const dtcRef = ref(firebaseDB, `users/${currentUser.uid}/motorcycles/${motorcycleId}/latest/dtcs`);
-      await set(dtcRef, null as any); // Use set to delete the dtcs node, cast null to any to fix linter error
-      // Update local state
+      await set(dtcRef, null as any); 
       setCurrentData(prev => ({
         ...prev,
         dtcs: []
@@ -75,9 +68,9 @@ export default function MotorcycleDashboardPage() {
         <Header />
         <main className="flex-1 p-4 md:p-8">
           <div className="container mx-auto max-w-7xl">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-8">Dashboard for {motorcycleId}</h1> {/* Display motorcycleId in title */}
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8">Dashboard for {motorcycleId}</h1>
 
-            {error && !currentData.dataValid && (
+            {error && !showData && ( // Show error only if not showing data
               error.startsWith("No data at path") ? (
                 <Alert variant="default" className="mb-8 border-primary/50 dark:border-primary/40">
                   <Info className="h-4 w-4 text-primary" />
@@ -101,28 +94,29 @@ export default function MotorcycleDashboardPage() {
             )}
 
             {isLoading ? (
-               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">\
-                  {[...Array(DIAGNOSTIC_ITEMS_CONFIG.length)].map((_, i) => (
+               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {[...Array(6)].map((_, i) => ( // Show a few skeletons
                     <CardSkeleton key={i}/>
-                  ))}\
+                  ))}
                </div>
             ) : showData ? (
               <>
                 {/* DTC Section */}
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">Diagnostic Trouble Codes (DTCs)</h2>
+                  <h2 className="text-lg md:text-xl font-semibold mb-4">Diagnostic Trouble Codes (DTCs)</h2>
                   {currentData.dtcs && currentData.dtcs.length > 0 ? (
                     <div className="space-y-4">
                       <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Active DTCs Detected</AlertTitle>
                         <AlertDescription>
-                          <div className="mt-2">
+                          <div className="mt-2 space-y-1">
                             {currentData.dtcs.map((dtc, index) => (
-                              <div key={index} className="flex items-center gap-2">
+                              <div key={index} className="flex items-center gap-2 text-sm">
                                 <span className="font-mono">{dtc.code}</span>
                                 <span>-</span>
                                 <span>{dtc.description}</span>
+                                <span className="text-xs text-muted-foreground">({dtc.severity})</span>
                               </div>
                             ))}
                           </div>
@@ -146,7 +140,7 @@ export default function MotorcycleDashboardPage() {
                   )}
                 </div>
 
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
                   {selectedParameters.map(paramName => {
                     const param = currentData.parameters[paramName];
                     if (!param) return null;
@@ -157,16 +151,23 @@ export default function MotorcycleDashboardPage() {
                         title={paramName}
                         value={param.value.toLocaleString()}
                         unit={param.unit}
-                        iconName="Activity"
-                        status={param.isValid ? StatusEnum.NORMAL : StatusEnum.CRITICAL}
+                        iconName="Activity" // Consider making icon dynamic based on paramName
+                        status={param.isValid ? StatusEnum.NORMAL : StatusEnum.CRITICAL} // Simplified status
                     />
                   );
                 })}
+                {selectedParameters.length === 0 && availableParameters.length > 0 && (
+                    <p className="text-muted-foreground md:col-span-2 lg:col-span-3 xl:col-span-4">Select parameters below to display them as cards.</p>
+                )}
+                {availableParameters.length === 0 && (
+                     <p className="text-muted-foreground md:col-span-2 lg:col-span-3 xl:col-span-4">No diagnostic parameters currently available.</p>
+                )}
               </div>
 
                 {/* Parameter Selection */}
+                {availableParameters.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">Available Parameters</h2>
+                  <h2 className="text-lg md:text-xl font-semibold mb-4">Displayed Parameters</h2>
                   <div className="flex flex-wrap gap-2">
                     {availableParameters.map(paramName => (
                       <button
@@ -178,10 +179,10 @@ export default function MotorcycleDashboardPage() {
                               : [...prev, paramName]
                           );
                         }}
-                        className={`px-3 py-1 rounded-full text-sm ${
+                        className={`px-3 py-1.5 rounded-full text-xs md:text-sm transition-colors ${
                           selectedParameters.includes(paramName)
                             ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
+                            : 'bg-muted hover:bg-muted/80'
                         }`}
                       >
                         {paramName}
@@ -189,32 +190,36 @@ export default function MotorcycleDashboardPage() {
                     ))}
                   </div>
                 </div>
+                )}
 
                 {/* Raw Data Table */}
+                {Object.keys(currentData.parameters).length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">All Parameters</h2>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border">
-                      <thead>
+                  <h2 className="text-lg md:text-xl font-semibold mb-4">All Received Parameters</h2>
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-muted">
                         <tr>
-                          <th className="border px-4 py-2">Parameter</th>
-                          <th className="border px-4 py-2">Value</th>
-                          <th className="border px-4 py-2">Unit</th>
-                          <th className="border px-4 py-2">Min</th>
-                          <th className="border px-4 py-2">Max</th>
-                          <th className="border px-4 py-2">Status</th>
+                          <th className="px-4 py-2 text-left font-medium">Parameter</th>
+                          <th className="px-4 py-2 text-left font-medium">Value</th>
+                          <th className="px-4 py-2 text-left font-medium">Unit</th>
+                          <th className="px-4 py-2 text-left font-medium">Min</th>
+                          <th className="px-4 py-2 text-left font-medium">Max</th>
+                          <th className="px-4 py-2 text-left font-medium">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {Object.entries(currentData.parameters).map(([name, param]) => (
-                          <tr key={name}>
-                            <td className="border px-4 py-2">{name}</td>
-                            <td className="border px-4 py-2">{param.value.toLocaleString()}</td>
-                            <td className="border px-4 py-2">{param.unit}</td>
-                            <td className="border px-4 py-2">{param.min.toLocaleString()}</td>
-                            <td className="border px-4 py-2">{param.max.toLocaleString()}</td>
-                            <td className="border px-4 py-2">
-                              {param.isValid ? 'Valid' : 'Invalid'}
+                          <tr key={name} className="border-b last:border-b-0">
+                            <td className="px-4 py-2">{name}</td>
+                            <td className="px-4 py-2">{param.value.toLocaleString()}</td>
+                            <td className="px-4 py-2">{param.unit}</td>
+                            <td className="px-4 py-2">{param.min.toLocaleString()}</td>
+                            <td className="px-4 py-2">{param.max.toLocaleString()}</td>
+                            <td className="px-4 py-2">
+                              {param.isValid ? 
+                                <span className="text-green-600 dark:text-green-400">Valid</span> : 
+                                <span className="text-red-600 dark:text-red-400">Invalid</span>}
                             </td>
                           </tr>
                         ))}
@@ -222,16 +227,31 @@ export default function MotorcycleDashboardPage() {
                     </table>
                   </div>
                 </div>
+                )}
               </>
-            ) : !error ? ( // If not loading, not showing data, and no error, means we're still in an initial state or waiting
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {[...Array(DIAGNOSTIC_ITEMS_CONFIG.length)].map((_, i) => (
-                  <CardSkeleton key={i}/>
-                ))}\
-              </div>
+            ) : !error && !isLoading ? ( // If not loading, not showing data, and no error, means initial state or empty data
+              <Alert className="mb-8">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>No Data Yet</AlertTitle>
+                  <AlertDescription>
+                    The dashboard is ready. Waiting for the first data transmission from your motorcycle.
+                  </AlertDescription>
+              </Alert>
             ): null }
 
             <PredictiveMaintenanceCard systemStatus={currentData.systemStatus} />
+            
+            <div className="mt-8 flex justify-center">
+              <Link href="/" passHref legacyBehavior>
+                <Button variant="outline" asChild>
+                  <a>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Back to My Motorcycles
+                  </a>
+                </Button>
+              </Link>
+            </div>
+
           </div>
         </main>
         <footer className="py-6 md:px-8 md:py-0 border-t mt-auto">
@@ -249,13 +269,13 @@ export default function MotorcycleDashboardPage() {
 
 function CardSkeleton() {
   return (
-    <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-card">
+    <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-card shadow-sm">
       <div className="flex justify-between items-center">
-        <Skeleton className="h-5 w-2/5" />
+        <Skeleton className="h-4 w-2/5" />
         <Skeleton className="h-5 w-5 rounded-full" />
       </div>
-      <Skeleton className="h-8 w-3/5" />
-      <Skeleton className="h-5 w-1/3" />
+      <Skeleton className="h-7 w-3/5" />
+      <Skeleton className="h-4 w-1/3" />
     </div>
   )
 }

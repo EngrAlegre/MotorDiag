@@ -4,12 +4,13 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, AuthError } from 'firebase/auth';
-import { 
-  onAuthStateChanged, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  sendEmailVerification // Added
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,8 @@ type AuthContextType = {
   signup: (values: z.infer<typeof signupSchema>) => Promise<void>;
   logout: () => Promise<void>;
   updateUserDisplayName: (displayName: string) => Promise<boolean>;
+  resendVerificationEmail: () => Promise<void>; // Added
+  reloadUser: () => Promise<void>; // Added
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,8 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/'); 
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      if (userCredential.user && !userCredential.user.emailVerified) {
+        toast({
+          title: "Email Not Verified",
+          description: "Please verify your email before logging in. Redirecting you now...",
+          variant: "destructive",
+        });
+        router.push('/verify-email');
+      } else {
+        router.push('/');
+      }
     } catch (err) {
       const authError = err as AuthError;
       console.error("Login error:", authError);
@@ -67,8 +79,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/'); 
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      if (userCredential.user) {
+        await sendEmailVerification(userCredential.user);
+        toast({
+          title: "Signup Successful!",
+          description: `A verification email has been sent to ${values.email}. Please check your inbox.`,
+        });
+        // Keep user logged in but unverified, redirect to verify page
+        router.push('/verify-email');
+      }
     } catch (err) {
       const authError = err as AuthError;
       console.error("Signup error:", authError);
@@ -83,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await signOut(auth);
-      router.push('/login'); 
+      router.push('/login');
     } catch (err) {
       const authError = err as AuthError;
       console.error("Logout error:", authError);
@@ -103,7 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       await updateProfile(auth.currentUser, { displayName });
-      // Manually update the currentUser state as onAuthStateChanged might not trigger for profile updates
       setCurrentUser(prevUser => prevUser ? { ...prevUser, displayName } : null);
       toast({ title: "Success", description: "Display name updated successfully." });
       return true;
@@ -118,6 +137,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [toast]);
 
+  const resendVerificationEmail = async () => {
+    if (!currentUser) {
+      toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
+      return;
+    }
+    try {
+      await sendEmailVerification(currentUser);
+      toast({ title: "Verification Email Sent", description: "A new verification email has been sent. Please check your inbox." });
+    } catch (err) {
+      const authError = err as AuthError;
+      console.error("Resend verification email error:", authError);
+      toast({ title: "Error", description: authError.message || "Failed to resend verification email.", variant: "destructive" });
+    }
+  };
+
+  const reloadUser = async () => {
+    if (!auth.currentUser) return;
+    setLoading(true); // Indicate loading while reloading
+    try {
+      await auth.currentUser.reload();
+      // onAuthStateChanged will update currentUser, so we don't strictly need setCurrentUser here for that
+      // But we do want to reflect the loading state change immediately
+    } catch (err) {
+      console.error("Error reloading user:", err);
+      toast({ title: "Error", description: "Could not refresh user status.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const value = {
     currentUser,
@@ -129,6 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signup,
     logout,
     updateUserDisplayName,
+    resendVerificationEmail,
+    reloadUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

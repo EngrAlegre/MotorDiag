@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -12,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Header } from '@/components/Header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon } from 'lucide-react';
+import { InfoIcon, ChevronLeft } from 'lucide-react';
 
 export default function AddMotorcyclePage() {
   const [make, setMake] = useState('');
@@ -69,6 +70,10 @@ export default function AddMotorcyclePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    router.back();
   };
 
   return (
@@ -170,9 +175,14 @@ export default function AddMotorcyclePage() {
                     disabled={loading}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Adding Motorcycle...' : 'Add Motorcycle'}
-                </Button>
+                <div className="flex space-x-2 pt-2">
+                  <Button type="button" variant="outline" onClick={handleCancel} className="w-full" disabled={loading}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Cancel
+                  </Button>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Adding Motorcycle...' : 'Add Motorcycle'}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>

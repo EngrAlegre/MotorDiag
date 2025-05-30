@@ -7,7 +7,7 @@ import type { z } from 'zod';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,17 @@ import { signupSchema } from '@/lib/authSchemas';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { MotoVisionLogo } from '@/components/MotoVisionLogo';
+import { UserAgreementDisplay } from '@/components/UserAgreementDisplay';
+import { PrivacyPolicyDisplay } from '@/components/PrivacyPolicyDisplay';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function SignupPage() {
   const { signup, loading, error, setError } = useAuth();
@@ -25,6 +36,8 @@ export default function SignupPage() {
       email: '',
       password: '',
       confirmPassword: '',
+      agreedToTerms: false,
+      agreedToPrivacyPolicy: false,
     },
   });
 
@@ -59,7 +72,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input placeholder="you@example.com" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -72,7 +85,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -85,19 +98,110 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-1 mb-3">
+                {/* User Agreement Dialog Trigger */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="link" className="p-0 h-auto text-sm font-normal block w-full text-left" type="button">
+                      View User Agreement
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>User Agreement</DialogTitle>
+                      <DialogDescription>
+                        Please read the terms and conditions carefully.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[50vh] w-full rounded-md border p-3 bg-muted/50">
+                      <UserAgreementDisplay />
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Privacy Policy Dialog Trigger */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="link" className="p-0 h-auto text-sm font-normal block w-full text-left" type="button">
+                      View Privacy Policy
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>Privacy Policy</DialogTitle>
+                      <DialogDescription>
+                        Please read our privacy practices carefully.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[50vh] w-full rounded-md border p-3 bg-muted/50">
+                      <PrivacyPolicyDisplay />
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="agreedToTerms"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={loading}
+                        aria-label="Agree to User Agreement"
+                        id="agreedToTerms"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel htmlFor="agreedToTerms" className="text-sm font-normal">
+                        I have read and agree to the User Agreement.
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="agreedToPrivacyPolicy"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={loading}
+                        aria-label="Agree to Privacy Policy"
+                        id="agreedToPrivacyPolicy"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel htmlFor="agreedToPrivacyPolicy" className="text-sm font-normal">
+                        I have read and agree to the Privacy Policy.
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col items-center space-y-2">
+        <CardFooter className="flex flex-col items-center space-y-2 pt-6">
           <p className="text-sm text-muted-foreground">
             Already have an account?{' '}
             <Button variant="link" asChild className="p-0 h-auto">

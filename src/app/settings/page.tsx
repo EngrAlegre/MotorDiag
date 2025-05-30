@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff } from 'lucide-react';
+import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText } from 'lucide-react'; // Added FileText
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
@@ -23,7 +23,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { ref, onValue } from 'firebase/database';
 import { db as firebaseDB } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
-import Image from 'next/image'; // For QR code logo
+import Image from 'next/image'; 
 
 export default function SettingsPage() {
   const [criticalAlertsEnabled, setCriticalAlertsEnabled] = useState(false);
@@ -142,7 +142,7 @@ export default function SettingsPage() {
       toast({title: "Error", description: "Could not fetch motorcycle list.", variant: "destructive"});
     });
     return () => unsubscribe();
-  }, [showProvisioningDialog, toast]); 
+  }, [showProvisioningDialog, toast, selectedMotorcycleId]); // Added selectedMotorcycleId to dependencies
 
   useEffect(() => {
     const selected = motorcycles.find(m => m.id === selectedMotorcycleId);
@@ -151,6 +151,7 @@ export default function SettingsPage() {
       setWifiSSID(selected.wifiSSID || '');
       setWifiPassword(selected.wifiPassword || '');
     } else if (motorcycles.length > 0 && !selectedMotorcycleId) {
+      // If no motorcycle is selected but motorcycles are available, select the first one by default.
       setSelectedMotorcycleId(motorcycles[0].id);
     } else if (motorcycles.length === 0) {
         setMotorcycleVin('');
@@ -278,7 +279,7 @@ export default function SettingsPage() {
           { label: 'Model', value: selectedMotorcycle?.model || 'N/A (Select motorcycle)' },
           { label: 'WiFi SSID', value: wifiSSID || 'N/A (Enter WiFi details)' },
           { label: 'WiFi Password', value: wifiPassword || 'N/A (Enter WiFi details)', isSensitive: true },
-          { label: 'Firebase ID Token', value: idToken || (tokenError || 'Loading token...'), isSensitive: true },
+          { label: 'Firebase ID Token', value: idToken || (tokenError || 'Loading token...'), isSensitive: true, isToken: true },
         ];
         const qrPayload = {
           uid: getAuth().currentUser?.uid || '',
@@ -302,7 +303,7 @@ export default function SettingsPage() {
                 </Alert>
             )}
             <div className="space-y-2 max-h-[350px] overflow-y-auto overflow-x-hidden p-1">
-              {provisioningData.map(({ label, value, isSensitive }) => (
+              {provisioningData.map(({ label, value, isSensitive, isToken }) => (
                 <div key={label} className="w-full">
                   <div className="flex justify-between items-center mb-1">
                     <Label htmlFor={label.toLowerCase().replace(/\s/g, '-')} className="text-xs">
@@ -343,9 +344,9 @@ export default function SettingsPage() {
                     id={label.toLowerCase().replace(/\s/g, '-')}
                     className={cn(
                       "w-full border border-input bg-muted px-2 py-1.5 rounded-md text-xs text-muted-foreground min-h-[30px] overflow-hidden min-w-0", // Base styles
-                      isSensitive && !showSensitiveData[label] // Condition for blurred state
-                        ? "blur-sm select-none flex items-center" // Classes for blurred state (centers "Click to reveal")
-                        : (label === 'Firebase ID Token' ? "break-all" : "break-words") // Classes for revealed state: break-all for token, break-words for others
+                        isSensitive && !showSensitiveData[label] // Condition for blurred state
+                        ? "blur-sm select-none flex items-center" // Classes for blurred state
+                        : (isToken ? "break-all" : "break-words") // REVEALED: Firebase ID Token uses break-all, others use break-words
                     )}
                     onClick={() => { if (isSensitive && !showSensitiveData[label]) toggleSensitiveData(label);}}
                     title={isSensitive && !showSensitiveData[label] ? "Click to reveal" : (value && value.length > 50 ? value: "")}
@@ -556,12 +557,15 @@ export default function SettingsPage() {
                <Separator />
                 <div>
                     <div className="flex items-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-3 text-muted-foreground"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="M12 12H2"></path><path d="M12 12H10"></path><path d="M12 12H14"></path></svg>
+                        <FileText className="mr-3 h-5 w-5 text-muted-foreground"/>
                         <h3 className="text-lg font-semibold text-foreground">Legal & Terms</h3>
                     </div>
-                    <div className="space-y-2 pl-8">
+                    <div className="space-y-2 pl-8 flex flex-col items-start">
                         <Button variant="link" asChild className="p-0 h-auto justify-start">
                             <Link href="/user-agreement" className="text-sm">View User Agreement</Link>
+                        </Button>
+                        <Button variant="link" asChild className="p-0 h-auto justify-start">
+                            <Link href="/privacy-policy" className="text-sm">View Privacy Policy</Link>
                         </Button>
                     </div>
                 </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, ChevronLeft } from "lucide-react";
 
 export default function EditMotorcyclePage() {
   const { currentUser } = useAuth();
@@ -31,7 +32,7 @@ export default function EditMotorcyclePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !motorcycleId) return;
     const motorcycleRef = ref(firebaseDB, `users/${currentUser.uid}/motorcycles/${motorcycleId}`);
     get(motorcycleRef).then((snapshot) => {
       if (snapshot.exists()) {
@@ -41,7 +42,8 @@ export default function EditMotorcyclePage() {
         setYear(data.year || "");
         setVin(data.vin || "");
         setWifiSSID(data.wifiSSID || "");
-        setWifiPassword(data.wifiPassword || "");
+        // For security, password fields are generally not pre-filled or fetched.
+        // setWifiPassword(data.wifiPassword || ""); 
       } else {
         setError("Motorcycle not found.");
       }
@@ -57,15 +59,21 @@ export default function EditMotorcyclePage() {
     setSuccessMessage(null);
     try {
       if (!currentUser) throw new Error("You must be logged in to edit a motorcycle");
-      const motorcycleRef = ref(firebaseDB, `users/${currentUser.uid}/motorcycles/${motorcycleId}`);
-      await update(motorcycleRef, {
+      
+      const updates: any = {
         make,
         model,
         year,
         vin,
         wifiSSID,
-        wifiPassword,
-      });
+      };
+      // Only update password if a new one is entered
+      if (wifiPassword) {
+        updates.wifiPassword = wifiPassword;
+      }
+
+      const motorcycleRef = ref(firebaseDB, `users/${currentUser.uid}/motorcycles/${motorcycleId}`);
+      await update(motorcycleRef, updates);
       setSuccessMessage("Motorcycle updated successfully!");
       setTimeout(() => {
         router.push(`/dashboard/${motorcycleId}`);
@@ -75,6 +83,10 @@ export default function EditMotorcyclePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    router.back();
   };
 
   return (
@@ -147,8 +159,14 @@ export default function EditMotorcyclePage() {
                     value={vin}
                     onChange={(e) => setVin(e.target.value)}
                     required
-                    disabled={loading}
+                    disabled={loading || motorcycleId !== vin} // Disable if VIN is changed, as it's the key
+                    title={motorcycleId !== vin ? "VIN cannot be changed after creation as it's the ID." : ""}
                   />
+                   {motorcycleId !== vin && (
+                    <p className="text-xs text-muted-foreground">
+                      Note: VIN acts as the ID and cannot be changed after creation. If you need to change the VIN, please remove and re-add the motorcycle.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="wifiSSID">WiFi SSID</Label>
@@ -167,16 +185,20 @@ export default function EditMotorcyclePage() {
                   <Input
                     id="wifiPassword"
                     type="password"
-                    placeholder="Enter WiFi Password"
+                    placeholder="Enter new password if you want to change it"
                     value={wifiPassword}
                     onChange={(e) => setWifiPassword(e.target.value)}
-                    required
                     disabled={loading}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Saving..." : "Save Changes"}
-                </Button>
+                <div className="flex space-x-2 pt-2">
+                  <Button type="button" variant="outline" onClick={handleCancel} className="w-full" disabled={loading}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Cancel
+                  </Button>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -184,4 +206,4 @@ export default function EditMotorcyclePage() {
       </div>
     </ProtectedRoute>
   );
-} 
+}
