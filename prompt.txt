@@ -1,0 +1,88 @@
+You are an expert academic writer and technical documenter.
+
+I have an existing thesis paper in .docx format about a motorcycle diagnostic system, but it is outdated: it describes a mobile app and a static data structure. I want you to use the following updated project summary and all available details from my .docx thesis to generate a new, full thesis paper that reflects the current system, which is dynamic, web-based, and uses ESP32 and Firebase.
+
+Please:
+- Use the structure, sections, and any relevant content from my .docx thesis as a base.
+- Update all sections (abstract, introduction, related work, system architecture, implementation, results, discussion, conclusion, references, etc.) to reflect the new system described below.
+- Replace all references to the mobile app and static data with the new web-based, dynamic, Firebase-powered approach.
+- Integrate the new features, architecture, data flow, ERD, and best practices as described.
+- Add a comparison between the old (static/mobile) and new (dynamic/web) approaches.
+- Use clear academic language and cite best practices for IoT, web, and cloud systems.
+- If you need to invent or expand on details (e.g., for results, discussion, or future work), do so in a way that is consistent with the summary and the original thesis style.
+
+**Updated Project Summary:**
+
+Dynamic, Web-Based Motorcycle Diagnostic System Using ESP32 and Firebase
+
+Project Overview:
+This project is a modern, scalable motorcycle diagnostic system that leverages IoT and cloud technologies. It replaces the traditional static/mobile approach with a dynamic, web-based solution. The system consists of an ESP32-based hardware device, a Firebase Realtime Database backend, and a Next.js web dashboard for users.
+
+Key Features & Innovations:
+- Dynamic Data Structure: Diagnostic parameters (like engine RPM, battery voltage, etc.) and Diagnostic Trouble Codes (DTCs) are stored as flexible, dynamic key-value pairs, not as fixed fields. This allows the system to support any number of parameters or DTCs without code changes.
+- Web-Based Dashboard: Users access a responsive web dashboard (built with Next.js) to view real-time diagnostic data, DTCs, and system status for each of their motorcycles. The dashboard updates automatically as new data arrives.
+- ESP32 IoT Device: The ESP32 reads data from the motorcycle's sensors and CAN bus, then sends this data (including parameters and DTCs) to Firebase in a dynamic JSON format.
+- Firebase Realtime Database: All diagnostic data is stored in Firebase, structured to support multiple users and motorcycles. Each motorcycle profile contains a `latest` node with dynamic `parameters` and `dtcs`.
+- DTC Management: DTCs are displayed on the dashboard. Users can clear DTCs from the web interface, which updates Firebase and (optionally) notifies the ESP32 to clear codes on the motorcycle.
+- Multi-Motorcycle Support: Each user can register and monitor multiple motorcycles, each with its own profile and diagnostic data.
+- Scalability & Flexibility: The dynamic data model and cloud backend make the system easily extensible to new parameters, DTCs, or features without major code changes.
+
+System Architecture:
+- ESP32 Firmware: Reads sensor and CAN data. Detects and stores parameters and DTCs dynamically. Sends data to Firebase in real time.
+- Firebase Realtime Database: Stores user accounts, motorcycle profiles, and diagnostic data. Each motorcycle's `latest` node contains:
+  - `parameters`: `{ [parameterName]: { value, unit, min, max, isValid, lastUpdate } }`
+  - `dtcs`: `[ { code, description, severity, timestamp } ]`
+  - Metadata: `timestamp`, `protocol`, `dataValid`, `systemStatus`
+- Next.js Web Dashboard: Authenticates users. Displays all motorcycles and their real-time diagnostic data. Shows DTCs with the ability to clear them. Visualizes parameters and system status.
+
+Data Flow:
+1. Data Collection: ESP32 collects data from the motorcycle and formats it dynamically.
+2. Data Upload: ESP32 uploads data to the correct Firebase path for the user and motorcycle.
+3. Real-Time Display: The web dashboard listens for changes in Firebase and updates the UI instantly.
+4. DTC Management: Users can clear DTCs from the dashboard, which updates Firebase and (optionally) the ESP32.
+
+Best Practices Used:
+- Dynamic data modeling for IoT
+- Real-time cloud database (Firebase)
+- Responsive web UI (Next.js)
+- Secure, multi-user architecture
+- Extensible for future features
+
+ERD (Entity Relationship Diagram) Overview:
+- User: Has many Motorcycles
+- Motorcycle: Belongs to a User; Has a Profile (make, model, VIN, WiFi, etc.); Has a Latest Diagnostic Data node
+- Latest Diagnostic Data: Contains dynamic Parameters (key-value); Contains dynamic DTCs (array of codes); Contains metadata (timestamp, protocol, etc.)
+
+Firebase Data Example:
+{
+  "users": {
+    "userId123": {
+      "motorcycles": {
+        "yamaha_001": {
+          "profile": {
+            "make": "Yamaha",
+            "model": "R15",
+            "vin": "1234567890",
+            "wifiSSID": "MyWiFi",
+            "wifiPassword": "password"
+          },
+          "latest": {
+            "timestamp": 1680000000000,
+            "parameters": {
+              "EngineRPM": { "value": 3000, "unit": "rpm", "min": 0, "max": 12000, "isValid": true, "lastUpdate": 1680000000000 },
+              "BatteryVoltage": { "value": 12.5, "unit": "V", "min": 11, "max": 14, "isValid": true, "lastUpdate": 1680000000000 }
+            },
+            "dtcs": [
+              { "code": "P0300", "description": "Engine Misfire", "severity": "error", "timestamp": 1680000000000 }
+            ],
+            "protocol": "CAN",
+            "dataValid": true,
+            "systemStatus": "Normal"
+          }
+        }
+      }
+    }
+  }
+}
+
+If you need to invent or expand on details (e.g., for results, discussion, or future work), do so in a way that is consistent with the summary and the original thesis style. 

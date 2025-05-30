@@ -1,0 +1,79 @@
+
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        // Allows a user to read and write their own top-level data
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+
+        // Example validation for the user object (optional)
+        // ".validate": "newData.hasChildren(['email', 'displayName'])",
+
+        "motorcycles": {
+          // Allow read of the list of motorcycles if the user is authenticated and is the owner
+          ".read": "auth != null && auth.uid == $uid",
+          // User can write to create/delete motorcycle entries under their UID
+          // This rule allows users to add/remove motorcycles.
+          // Validation for individual motorcycle creation should be at the $motorcycleId level.
+          ".write": "auth != null && auth.uid == $uid",
+
+          "$motorcycleId": { // $motorcycleId is typically the VIN
+            // Allow read/write to a specific motorcycle's profile data (make, model, vin, year, wifi settings etc.)
+            // if the user is authenticated and is the owner
+            ".read": "auth != null && auth.uid == $uid",
+            ".write": "auth != null && auth.uid == $uid",
+
+            // Example validation for motorcycle profile data (optional)
+            // ".validate": "newData.hasChildren(['make', 'model', 'vin', 'year', 'wifiSSID', 'addedAt']) && newData.child('vin').isString() && newData.child('vin').val().length > 0 && newData.child('vin').val() == $motorcycleId",
+
+            "latest": {
+              // User can read their motorcycle's latest data
+              ".read": "auth != null && auth.uid == $uid",
+              // Device (ESP32) can write if its custom token has a device_id claim matching $motorcycleId (VIN)
+              // User can also write (e.g., to clear DTCs from the web app, or if ESP32 uses user's ID token initially)
+              ".write": "auth != null && (auth.uid == $uid || (auth.token.device_id != null && auth.token.device_id == $motorcycleId))",
+
+              "parameters": {
+                // Example validation: Allow clearing (null) or ensure it's an object if data exists
+                // ".validate": "newData.val() == null || newData.isObject()"
+                // Add more granular validation per parameter if needed
+              },
+              "dtcs": {
+                // Example validation: Allow clearing (null) or ensure it's an array if data exists
+                // ".validate": "newData.val() == null || newData.isArray()"
+              }
+              // Add validation for other fields under 'latest' if necessary
+              // "timestamp": { ".validate": "newData.isNumber()" },
+              // "protocol": { ".validate": "newData.isString()" },
+              // "dataValid": { ".validate": "newData.isBoolean()" },
+              // "systemStatus": { ".validate": "newData.isString()" }
+            },
+
+            // Optional: If your ESP32 writes to other dedicated paths under a motorcycle
+            // These are just examples, adjust if your ESP32 firmware uses different paths.
+            "data_uploads": { // Example: for raw data logs
+               ".read": "auth != null && auth.uid == $uid",
+               ".write": "auth != null && (auth.token.device_id != null && auth.token.device_id == $motorcycleId)"
+            },
+            "device_status_updates": { // Example: for ESP32 operational status
+               ".read": "auth != null && auth.uid == $uid",
+               ".write": "auth != null && (auth.token.device_id != null && auth.token.device_id == $motorcycleId)"
+            }
+          }
+        }
+      }
+    },
+    // Optional: If you have a separate top-level node for general device information
+    // not tied to a specific user's motorcycle directly for listing/management purposes.
+    // This might be useful if devices need to register themselves before being claimed by a user.
+    "all_devices_public_info": { // Renamed for clarity
+      "$deviceId": {
+        // Example: Allow public read for non-sensitive device info if needed
+        // ".read": true,
+        // Write rule would likely be very restrictive, e.g., admin only or specific service roles
+        // ".write": "/* admin or service role */"
+      }
+    }
+  }
+}

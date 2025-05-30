@@ -1,0 +1,43 @@
+{
+  "timestamp": 1718000000000,
+  "protocol": "CAN",
+  "parameters": {
+    "EngineRPM": {
+      "name": "EngineRPM",
+      "unit": "rpm",
+      "value": 3200,
+      "min": 0,
+      "max": 12000,
+      "isValid": true,
+      "lastUpdate": 1718000000000
+    },
+    "BatteryVoltage": {
+      "name": "BatteryVoltage",
+      "unit": "V",
+      "value": 12.7,
+      "min": 11,
+      "max": 14.5,
+      "isValid": true,
+      "lastUpdate": 1718000000000
+    },
+    "CoolantTemp": {
+      "name": "CoolantTemp",
+      "unit": "°C",
+      "value": 85,
+      "min": 60,
+      "max": 110,
+      "isValid": true,
+      "lastUpdate": 1718000000000
+    }
+  },
+  "dtcs": [
+    {
+      "code": "P0115",
+      "description": "Engine Coolant Temperature Sensor Circuit Malfunction",
+      "severity": "warning",
+      "timestamp": 1718000000000
+    }
+  ],
+  "dataValid": true,
+  "systemStatus": "Normal"
+}

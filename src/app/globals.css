@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 225 40% 27%; /* Deep Blue for light theme primary */
+    --primary-foreground: 0 0% 98%; /* Light text on blue */
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 222 47% 11%;
+    --accent: 99 100% 60%; /* Slightly darker lime for light theme */
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 225 40% 27%; /* Deep Blue for light theme rings */
+    --radius: 0.5rem;
+
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 217 10% 28%; /* Dark Gray #3E444E */
+    --foreground: 0 0% 90%;    /* Off-white */
+
+    --card: 217 10% 24%;       /* Slightly different dark shade */
+    --card-foreground: 0 0% 90%;
+
+    --popover: 217 10% 20%;
+    --popover-foreground: 0 0% 90%;
+
+    --primary: 225 40% 45%;    /* Deep Blue #293462, brightened for dark bg */
+    --primary-foreground: 99 100% 76%; /* Electric Lime on Deep Blue */
+
+    --secondary: 217 10% 40%;   /* Lighter gray for secondary elements */
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 217 10% 35%;
+    --muted-foreground: 217 5% 60%;
+
+    --accent: 99 100% 76%;     /* Electric Lime #A7FF83 */
+    --accent-foreground: 217 10% 10%; /* Dark text for high contrast on lime */
+
+    --destructive: 0 70% 55%;   /* Red for dark theme */
+    --destructive-foreground: 0 0% 90%;
+
+    --border: 217 10% 38%;
+    --input: 217 10% 38%;
+    --ring: 99 100% 76%;       /* Electric Lime for focus rings */
+    
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  }
+}
