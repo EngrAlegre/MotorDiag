@@ -471,18 +471,18 @@ export default function SettingsPage() {
                   <div className="rounded-lg border p-4">
                      <div className="flex items-center justify-between">
                         <div>
-                           <Label className="font-medium">FCM Registration Token</Label>
+                           <Label className="font-medium">Firebase Cloud Messaging (FCM)</Label>
                            <p className="text-sm text-muted-foreground mt-1">
                              Register this browser/device to receive push notifications.
                            </p>
                         </div>
                         <Button variant="default" size="sm" onClick={requestPermission}>
                           <Save className="mr-2 h-3 w-3"/>
-                          Setup Notifications
+                          FCM Token
                         </Button>
                       </div>
                        <p className="text-xs text-muted-foreground mt-2">
-                          Clicking this button will request notification permission. If granted, an FCM token will be generated for this device and saved to your user profile in the database, enabling push notifications. Ensure your VAPID key is correctly configured.
+                          Clicking "FCM Token" requests notification permission. If granted, an FCM token is generated for this device and saved to your user profile in the database, enabling push notifications. Ensure your VAPID key is correctly configured in the application code.
                        </p>
                       {notificationHookError && (
                         <Alert variant="destructive" className="mt-3">
@@ -517,7 +517,7 @@ export default function SettingsPage() {
                       )}
                        {!fcmToken && !notificationHookError && notificationPermission !== 'granted' && (
                         <p className="text-xs text-muted-foreground mt-2 italic">
-                          Click the button above to grant notification permission and retrieve an FCM token.
+                          Click "FCM Token" to grant permission and retrieve a token.
                         </p>
                       )}
                   </div>
