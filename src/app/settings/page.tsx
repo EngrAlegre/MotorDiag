@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, DownloadCloud, Info } from 'lucide-react';
+import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, DownloadCloud, Info, KeyRound, AlertCircle, RefreshCw, Save } from 'lucide-react';
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
@@ -48,7 +48,7 @@ export default function SettingsPage() {
   const {
     permission: notificationPermission,
     fcmToken,
-    error: notificationError,
+    error: notificationHookError, // Renamed to avoid conflict with tokenError
     requestPermission
   } = useNotificationPermission();
   const { toast } = useToast();
@@ -200,8 +200,13 @@ export default function SettingsPage() {
     if (pwaCanInstall) {
       handlePWAInstall();
     }
-    // If pwaCanInstall is false, clicking the button does nothing,
-    // but the instructions below guide the user.
+  };
+
+  const handleCopyToken = () => {
+    if (fcmToken) {
+      navigator.clipboard.writeText(fcmToken);
+      toast({ title: "FCM Token Copied!", description: "Token copied to clipboard." });
+    }
   };
 
   const renderProvisioningStepContent = () => {
@@ -452,10 +457,9 @@ export default function SettingsPage() {
                       </p>
                       {notificationPermission && notificationPermission !== 'default' && (
                         <p className={`text-xs mt-1 ${notificationPermission === 'granted' ? 'text-green-600' : 'text-red-600'}`}>
-                          Browser permission: {notificationPermission}
+                          Browser notification permission: {notificationPermission}
                         </p>
                       )}
-                      {notificationError && <p className="text-xs text-destructive mt-1">{notificationError}</p>}
                     </div>
                     <Switch
                       id="critical-alerts"
@@ -463,6 +467,60 @@ export default function SettingsPage() {
                       onCheckedChange={handleCriticalAlertsToggle}
                       aria-label="Toggle critical alerts"
                     />
+                  </div>
+                  <div className="rounded-lg border p-4">
+                     <div className="flex items-center justify-between">
+                        <div>
+                           <Label className="font-medium">FCM Registration Token</Label>
+                           <p className="text-sm text-muted-foreground mt-1">
+                             Register this browser/device to receive push notifications.
+                           </p>
+                        </div>
+                        <Button variant="default" size="sm" onClick={requestPermission}>
+                          <Save className="mr-2 h-3 w-3"/>
+                          Enable Notifications & Save Token
+                        </Button>
+                      </div>
+                       <p className="text-xs text-muted-foreground mt-2">
+                          This will request notification permission. If granted, an FCM token will be generated for this device and saved to your user profile in the database, enabling push notifications.
+                          Ensure your VAPID key is correctly configured.
+                       </p>
+                      {notificationHookError && (
+                        <Alert variant="destructive" className="mt-3">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Token Error</AlertTitle>
+                          <AlertDescription className="text-xs">{notificationHookError}</AlertDescription>
+                        </Alert>
+                      )}
+                      {fcmToken && !notificationHookError && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              readOnly
+                              value={fcmToken}
+                              className="text-xs h-8 flex-1 truncate bg-muted"
+                              aria-label="FCM Token"
+                            />
+                            <Button size="icon" variant="outline" onClick={handleCopyToken} className="h-8 w-8">
+                              <Copy className="h-4 w-4" />
+                              <span className="sr-only">Copy Token</span>
+                            </Button>
+                          </div>
+                           <p className="text-xs text-muted-foreground">
+                            Active FCM token for this device. It has been saved to the database.
+                          </p>
+                        </div>
+                      )}
+                      {!fcmToken && !notificationHookError && notificationPermission === 'granted' && (
+                        <p className="text-xs text-muted-foreground mt-2 italic">
+                          Attempting to retrieve FCM token... ensure VAPID key is correct in your Firebase setup and `useNotificationPermission.ts`.
+                        </p>
+                      )}
+                       {!fcmToken && !notificationHookError && notificationPermission !== 'granted' && (
+                        <p className="text-xs text-muted-foreground mt-2 italic">
+                          Click the button above to grant notification permission and retrieve an FCM token.
+                        </p>
+                      )}
                   </div>
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
@@ -650,3 +708,4 @@ export default function SettingsPage() {
     </ProtectedRoute>
   );
 }
+

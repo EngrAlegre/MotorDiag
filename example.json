@@ -94,6 +94,38 @@
           }
         }
       }
+    },
+    "juG2kStQzOYbjghnPNlW4ECtjV73": {
+      "motorcycles": {
+        "KAWASAKI_ZX10R_007": {
+          "profile": {
+            "make": "Kawasaki",
+            "model": "Ninja ZX-10R",
+            "vin": "KAWASAKI_ZX10R_007",
+            "year": "2022",
+            "wifiSSID": "MyHomeNet_5G",
+            "wifiPassword": "SuperSecurePassword123!",
+            "addedAt": "2025-06-01T10:15:00.000Z"
+          },
+          "latest": {
+            "timestamp": 1718000005000,
+            "protocol": "CAN_11BIT",
+            "dataValid": true,
+            "systemStatus": "Normal",
+            "parameters": {
+              "BatteryVoltage": { "value": 13.1, "unit": "V", "min": 11.8, "max": 14.8, "isValid": true, "lastUpdate": 1718000005000 },
+              "EngineRPM": { "value": 1250, "unit": "RPM", "min": 0, "max": 14000, "isValid": true, "lastUpdate": 1718000005000 },
+              "CoolantTemperature": { "value": 88, "unit": "°C", "min": 60, "max": 110, "isValid": true, "lastUpdate": 1718000005000 },
+              "OilLevel": { "value": 85, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000005000 },
+              "FuelLevel": { "value": 75, "unit": "%", "min": 10, "max": 100, "isValid": true, "lastUpdate": 1718000005000 },
+              "VehicleSpeed": { "value": 0, "unit": "km/h", "min": 0, "max": 300, "isValid": true, "lastUpdate": 1718000005000 },
+              "ThrottlePosition": { "value": 0, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000005000 },
+              "LeanAngle": { "value": 0, "unit": "deg", "min": -60, "max": 60, "isValid": true, "lastUpdate": 1718000005000 }
+            },
+            "dtcs": []
+          }
+        }
+      }
     }
   }
 }
