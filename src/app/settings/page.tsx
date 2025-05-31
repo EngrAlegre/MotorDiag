@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, Download, Smartphone, Laptop, DownloadCloud } from 'lucide-react';
+import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, DownloadCloud, Info } from 'lucide-react';
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
@@ -23,7 +23,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { ref, onValue } from 'firebase/database';
 import { db as firebaseDB } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
-import Image from 'next/image'; 
+import Image from 'next/image';
 import { usePWAInstallPrompt } from '@/hooks/usePWAInstallPrompt';
 
 export default function SettingsPage() {
@@ -86,20 +86,20 @@ export default function SettingsPage() {
   };
 
   const handleDeviceProvisionComplete = async () => {
-    setDeviceStatus('provisioning'); 
+    setDeviceStatus('provisioning');
     toast({
       title: "Provisioning Initiated",
       description: "The device should now attempt to connect using the provided details.",
     });
     setTimeout(() => {
       setDeviceStatus('connected');
-      setDeviceId('ESP32_MotoVision_' + (motorcycleVin || selectedMotorcycleId || '').slice(-4)); 
+      setDeviceId('ESP32_MotoVision_' + (motorcycleVin || selectedMotorcycleId || '').slice(-4));
       toast({
         title: "Device Provisioned (Simulated)",
         description: `Device for ${motorcycleVin || 'selected motorcycle'} is now marked as connected.`,
       });
-      setShowProvisioningDialog(false); 
-      setProvisioningStep('start'); 
+      setShowProvisioningDialog(false);
+      setProvisioningStep('start');
     }, 3000);
   };
 
@@ -165,12 +165,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const fetchToken = async () => {
-      setTokenError(null); 
-      setIdToken(null); 
+      setTokenError(null);
+      setIdToken(null);
       try {
         const user = getAuth().currentUser;
         if (user) {
-          const token = await user.getIdToken(true); 
+          const token = await user.getIdToken(true);
           setIdToken(token);
         } else {
           setTokenError('User not authenticated. Cannot fetch token.');
@@ -191,9 +191,17 @@ export default function SettingsPage() {
       fetchToken();
     }
   }, [showProvisioningDialog, provisioningStep, toast]);
-  
+
   const toggleSensitiveData = (label: string) => {
     setShowSensitiveData(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const handleInstallButtonClick = () => {
+    if (pwaCanInstall) {
+      handlePWAInstall();
+    }
+    // If pwaCanInstall is false, clicking the button does nothing,
+    // but the instructions below guide the user.
   };
 
   const renderProvisioningStepContent = () => {
@@ -298,7 +306,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               5. Enter the following details into the ESP32's web page, or scan the QR code if your ESP32 supports it.
             </p>
-            {tokenError && !idToken && ( 
+            {tokenError && !idToken && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertTitle>Token Error</AlertTitle>
                   <AlertDescription>{tokenError}</AlertDescription>
@@ -345,10 +353,10 @@ export default function SettingsPage() {
                   <div
                     id={label.toLowerCase().replace(/\s/g, '-')}
                     className={cn(
-                      "w-full border border-input bg-muted px-2 py-1.5 rounded-md text-xs text-muted-foreground min-h-[30px] overflow-hidden min-w-0", 
-                        isSensitive && !showSensitiveData[label] 
-                        ? "blur-sm select-none flex items-center" 
-                        : (isToken ? "break-all" : "break-words") 
+                      "w-full border border-input bg-muted px-2 py-1.5 rounded-md text-xs text-muted-foreground min-h-[30px] overflow-hidden min-w-0",
+                        isSensitive && !showSensitiveData[label]
+                        ? "blur-sm select-none flex items-center"
+                        : (isToken ? "break-all" : "break-words")
                     )}
                     onClick={() => { if (isSensitive && !showSensitiveData[label]) toggleSensitiveData(label);}}
                     title={isSensitive && !showSensitiveData[label] ? "Click to reveal" : (value && value.length > 50 ? value: "")}
@@ -365,11 +373,11 @@ export default function SettingsPage() {
                 <div className="p-2 bg-white rounded-md inline-block shadow">
                   <QRCodeCanvas
                     value={JSON.stringify(qrPayload)}
-                    size={128} 
+                    size={128}
                     level="M"
                     includeMargin={true}
-                    imageSettings={{ 
-                        src: '/favicon.ico', 
+                    imageSettings={{
+                        src: '/favicon.ico',
                         height: 20,
                         width: 20,
                         excavate: true,
@@ -527,8 +535,8 @@ export default function SettingsPage() {
                       </div>
                         <Button
                           onClick={() => {
-                            setProvisioningStep('start'); 
-                            setShowSensitiveData({}); 
+                            setProvisioningStep('start');
+                            setShowSensitiveData({});
                             setShowProvisioningDialog(true);
                           }}
                           variant={deviceStatus === 'disconnected' ? 'default' : 'outline'}
@@ -556,7 +564,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-              
+
               <Separator />
 
                <div>
@@ -576,48 +584,22 @@ export default function SettingsPage() {
                             </Alert>
                         ) : (
                           <>
-                            <Button 
-                              onClick={handlePWAInstall} 
-                              className="w-full mb-4"
-                              disabled={!pwaCanInstall}
+                            <Button
+                              onClick={handleInstallButtonClick}
+                              className="w-full mb-2"
                             >
                                 <DownloadCloud className="mr-2 h-4 w-4" />
                                 Install MotoVision App
                             </Button>
-                            {!pwaCanInstall && (
-                              <p className="text-xs text-muted-foreground mb-4 text-center">
-                                If the button is disabled or you prefer, follow the manual instructions below.
-                              </p>
-                            )}
-                            <CardDescription className="text-sm text-muted-foreground mb-4">
-                                Get a more integrated experience by adding MotoVision to your device's home screen. 
-                                If the button above doesn't trigger an install prompt, please use your browser's built-in "Add to Home Screen" or "Install app" feature as described below:
+                             <CardDescription className="text-xs text-muted-foreground">
+                                Clicking 'Install' will prompt you if your browser supports direct PWA installation.
+                                If not, or if you prefer, use your browser's menu:
+                                <br />- **Chrome/Edge:** Menu (⋮) &gt; 'Install app' or 'Add to Home screen'.
+                                <br />- **Safari (iOS):** Share icon &gt; 'Add to Home Screen'.
+                                <br />
+                                For best results, ensure you are using a production build deployed over HTTPS.
                             </CardDescription>
                           </>
-                        )}
-                        
-                        {!isStandalone && (
-                          <div className="space-y-3">
-                              <div className="flex items-start">
-                                  <Smartphone className="mr-3 h-4 w-4 text-primary mt-0.5 shrink-0" />
-                                  <div>
-                                      <h4 className="font-medium text-sm text-card-foreground">Mobile Devices (Android/iOS)</h4>
-                                      <p className="text-xs text-muted-foreground">
-                                          - **Android (Chrome):** Tap the three-dot menu, then 'Install app' or 'Add to Home screen'.
-                                          <br />- **iOS (Safari):** Tap the Share icon, then 'Add to Home Screen'.
-                                      </p>
-                                  </div>
-                              </div>
-                              <div className="flex items-start">
-                                  <Laptop className="mr-3 h-4 w-4 text-primary mt-0.5 shrink-0" />
-                                  <div>
-                                      <h4 className="font-medium text-sm text-card-foreground">Desktop (Chrome/Edge)</h4>
-                                      <p className="text-xs text-muted-foreground">
-                                         Look for an install icon in the address bar or check the browser's menu for an 'Install MotoVision...' option.
-                                      </p>
-                                  </div>
-                              </div>
-                          </div>
                         )}
                     </Card>
                 </div>
@@ -648,18 +630,18 @@ export default function SettingsPage() {
         <Dialog open={showProvisioningDialog} onOpenChange={(isOpen) => {
             setShowProvisioningDialog(isOpen);
             if (!isOpen) {
-                setProvisioningStep('start'); 
+                setProvisioningStep('start');
                 setShowSensitiveData({});
             }
         }}>
-          <DialogContent className="sm:max-w-md"> 
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-lg">Device Provisioning Steps</DialogTitle>
               <DialogDescription className="text-sm">
                 Follow these steps to configure your ESP32 device.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-2"> 
+            <div className="space-y-4 py-2">
               {renderProvisioningStepContent()}
             </div>
           </DialogContent>
@@ -668,4 +650,3 @@ export default function SettingsPage() {
     </ProtectedRoute>
   );
 }
-
