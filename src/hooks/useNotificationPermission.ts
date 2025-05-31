@@ -3,14 +3,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getToken, onMessage } from 'firebase/messaging';
-import { messagingInstance, db as firebaseDB, auth as firebaseAuth } from '@/lib/firebase'; // Import RTDB and Auth
-import { ref, set, serverTimestamp } from 'firebase/database'; // Firebase RTDB functions
+import { messagingInstance, db as firebaseDB, auth as firebaseAuth } from '@/lib/firebase';
+import { ref, set } from 'firebase/database';
 import { useToast } from './use-toast';
 
-// IMPORTANT: YOU MUST GENERATE A VAPID KEY IN YOUR FIREBASE CONSOLE AND ADD IT HERE.
-// Go to: Firebase Console > Project Settings > Cloud Messaging tab > Web configuration (at the bottom) > "Web Push certificates" section > Generate Key Pair.
-// Then, replace "YOUR_VAPID_PUBLIC_KEY_HERE" with the generated key.
-const VAPID_KEY = "BAvhUFbdb7XCE-loO_Xn9XekWZ0wEaeIzgj-yy8RcqR458ZXuSVHBML8KPa9NBOuKEYqWialsc-xBlIaFc2tv3o";
+// IMPORTANT: Replace "YOUR_VAPID_PUBLIC_KEY_HERE" with your actual VAPID key from your Firebase project console.
+const VAPID_KEY = "BAvhUFbdb7XCE-loO_Xn9XekWZ0wEaeIzgj-yy8RcqR458ZXuSVHBML8KPa9NBOuKEYqWialsc-xBlIaFc2tv3o"; // <<< MAKE SURE THIS IS YOUR REAL KEY
 
 export function useNotificationPermission() {
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
@@ -19,7 +17,6 @@ export function useNotificationPermission() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check initial permission status when the hook mounts
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setPermission(Notification.permission);
     }
@@ -44,7 +41,7 @@ export function useNotificationPermission() {
 
     const tokenPath = `users/${user.uid}/fcmTokens/${token}`;
     try {
-      await set(ref(firebaseDB, tokenPath), true); 
+      await set(ref(firebaseDB, tokenPath), true);
       console.log('FCM Token saved to database for user:', user.uid, 'at path:', tokenPath);
       toast({ title: "Token Synced Successfully!", description: "FCM token has been saved to your profile, enabling push notifications for this device.", duration: 5000});
     } catch (dbError) {
@@ -56,13 +53,20 @@ export function useNotificationPermission() {
   };
 
   const requestPermission = useCallback(async () => {
-    setError(null); // Clear previous errors
+    setError(null);
 
+    if (typeof window !== 'undefined' && !('Notification' in window)) {
+      const msg = "This browser does not support desktop notification.";
+      setError(msg);
+      toast({ title: "Unsupported Browser", description: msg, variant: "destructive" });
+      return false;
+    }
+    
     if (!messagingInstance) {
-      const msg = "Firebase Messaging is not initialized or not supported in this browser. Cannot request token or permissions.";
+      const msg = "Firebase Messaging is not initialized. This might be due to browser incompatibility (e.g., Firefox private browsing, or if service workers are disabled).";
       console.error(msg);
       setError(msg);
-      toast({ title: "Notification Setup Error", description: msg, variant: "destructive", duration: 7000 });
+      toast({ title: "Notification Setup Error", description: msg, variant: "destructive", duration: 10000 });
       return false;
     }
 
@@ -75,49 +79,57 @@ export function useNotificationPermission() {
     }
 
     try {
-      const status = await Notification.requestPermission();
-      setPermission(status);
+      const currentPermission = Notification.permission;
+      setPermission(currentPermission);
 
-      if (status === 'granted') {
-        toast({ title: "Notifications Enabled", description: "Attempting to retrieve and save FCM token..." });
-        const currentToken = await getToken(messagingInstance, { vapidKey: VAPID_KEY });
-        if (currentToken) {
-          setFcmToken(currentToken);
-          console.log('FCM Token retrieved:', currentToken);
-          await saveTokenToDatabase(currentToken); 
-          return true;
-        } else {
-          const msg = 'No registration token available. Could not retrieve FCM token. Ensure VAPID key is correct and service worker is active. Check browser console for errors like "messaging/failed-service-worker-registration".';
+      if (currentPermission === 'granted') {
+        toast({ title: "Permission Granted", description: "Attempting to retrieve FCM token..." });
+      } else if (currentPermission === 'default') {
+        const requestedStatus = await Notification.requestPermission();
+        setPermission(requestedStatus);
+        if (requestedStatus !== 'granted') {
+          const msg = `Notification permission was ${requestedStatus}.`;
           setError(msg);
-          toast({ title: "Token Retrieval Failed", description: msg, variant: "destructive", duration: 10000 });
-          console.error(msg);
+          toast({ title: `Notifications ${requestedStatus === 'denied' ? 'Denied' : 'Dismissed'}`, description: msg, variant: "destructive" });
           return false;
         }
-      } else if (status === 'denied') {
-        const msg = 'Notification permission denied by the user.';
+        toast({ title: "Permission Granted!", description: "Attempting to retrieve FCM token..." });
+      } else { // denied
+        const msg = 'Notification permission has been denied. You may need to reset it in browser settings.';
         setError(msg);
-        toast({ title: "Notifications Denied", description: "Permission was denied by the user.", variant: "destructive" });
+        toast({ title: "Notifications Denied", description: msg, variant: "destructive" });
         return false;
-      } else { // status === 'default' (dismissed)
-        const msg = 'Notification permission request dismissed by the user.';
-        setError(msg); // Set error for internal tracking if needed
-        toast({ title: "Notifications Dismissed", description: "Permission request was dismissed." });
+      }
+      
+      // If permission is granted (either initially or after request)
+      console.log('[useNotificationPermission] Attempting to get FCM token with VAPID key:', VAPID_KEY);
+      const currentToken = await getToken(messagingInstance, { vapidKey: VAPID_KEY });
+      
+      if (currentToken) {
+        setFcmToken(currentToken);
+        console.log('[useNotificationPermission] FCM Token retrieved:', currentToken);
+        await saveTokenToDatabase(currentToken);
+        return true;
+      } else {
+        const msg = 'Failed to retrieve FCM token. This can happen if the service worker registration fails or if the VAPID key is incorrect. Please check the browser console for more specific errors like "messaging/failed-service-worker-registration" or VAPID key issues.';
+        setError(msg);
+        toast({ title: "Token Retrieval Failed", description: msg, variant: "destructive", duration: 15000 });
+        console.error(msg);
         return false;
       }
     } catch (err) {
-      console.error('Error requesting notification permission or getting token:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during notification setup.';
-      setError(`Notification Setup Error: ${errorMessage}`); // More specific error
+      console.error('[useNotificationPermission] Error during permission request or token retrieval:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setError(`Notification Setup Error: ${errorMessage}`);
       toast({ title: "Notification Setup Error", description: errorMessage, variant: "destructive" });
       return false;
     }
-  }, [toast]); // Removed messagingInstance from deps as it's stable after init
+  }, [toast]);
 
-  // Listen for foreground messages
   useEffect(() => {
     if (messagingInstance && permission === 'granted') {
       const unsubscribe = onMessage(messagingInstance, (payload) => {
-        console.log('Foreground message received. ', payload);
+        console.log('[useNotificationPermission] Foreground message received: ', payload);
         toast({
           title: payload.notification?.title || "New Message",
           description: payload.notification?.body || "You have a new message.",
@@ -125,35 +137,34 @@ export function useNotificationPermission() {
       });
       return () => unsubscribe();
     }
-  }, [permission, toast]); // Removed messagingInstance from deps
+  }, [permission, toast]);
 
+  // Attempt to get token if permission is already granted on load
   useEffect(() => {
-    const initToken = async () => {
+    const initTokenWithExistingPermission = async () => {
       if (permission === 'granted' && !fcmToken && messagingInstance) {
-         if (VAPID_KEY === "YOUR_VAPID_PUBLIC_KEY_HERE" || !VAPID_KEY) {
-            console.error("VAPID key is not configured in useNotificationPermission.ts. Cannot fetch token on init.");
-            return;
-         }
+        if (VAPID_KEY === "YOUR_VAPID_PUBLIC_KEY_HERE" || !VAPID_KEY) {
+          console.warn("[useNotificationPermission] VAPID key not configured. Cannot auto-fetch token on load.");
+          return;
+        }
         try {
-          console.log("Attempting to get token on init as permission is granted.");
+          console.log("[useNotificationPermission] Permission already granted. Attempting to get token on load...");
           const currentToken = await getToken(messagingInstance, { vapidKey: VAPID_KEY });
           if (currentToken) {
             setFcmToken(currentToken);
-            console.log('FCM Token on init:', currentToken);
-            await saveTokenToDatabase(currentToken);
+            console.log('[useNotificationPermission] FCM Token retrieved on load:', currentToken);
+            // Optionally save to DB again, or assume it's there if fcmToken state was just unset
+            await saveTokenToDatabase(currentToken); 
           } else {
-            console.log('No token on init, might need to re-request permission or issue with VAPID key/SW.');
-            // Do not show error toast here, as requestPermission will handle user interaction
+            console.warn('[useNotificationPermission] No token retrieved on load despite granted permission. Service worker might still be an issue.');
           }
         } catch (err) {
-          console.error('Error getting token on init:', err);
-          // Do not show error toast here to avoid spamming if there's a persistent issue.
-          // The user can manually try via the "FCM Token" button which will show errors.
+          console.error('[useNotificationPermission] Error getting token on load:', err);
         }
       }
     };
-    initToken();
-  }, [permission, fcmToken, toast]); // Removed messagingInstance from deps
+    initTokenWithExistingPermission();
+  }, [permission, fcmToken, toast]); // Added fcmToken to prevent re-running if token is already set
 
   return { permission, fcmToken, error, requestPermission };
 }
