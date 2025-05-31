@@ -33,6 +33,12 @@
                 "description": "Throttle Position Sensor High",
                 "severity": "critical",
                 "timestamp": 1718000002700
+              },
+              {
+                "code": "P0110",
+                "description": "Intake Air Temperature Sensor 1 Circuit Malfunction",
+                "severity": "critical",
+                "timestamp": 1718000002900
               }
             ],
             "parameters": {
