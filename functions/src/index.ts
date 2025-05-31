@@ -30,6 +30,9 @@ interface MotorcycleLatestData {
   dtcs?: DTC[];
   parameters?: Record<string, DynamicParameter>;
   profile?: MotorcycleProfile; // For motorcycle name
+  protocol?: string;
+  dataValid?: boolean;
+  systemStatus?: string;
   // other fields from 'latest' if needed by notification logic
 }
 
@@ -58,18 +61,6 @@ export const sendMotorcycleAlertNotification = functions.database
       `[sendMotorcycleAlertNotification] Triggered for user: ${userId}, motorcycle: ${motorcycleId}`
     );
 
-    try {
-      const appInstance = admin.app();
-      const projectId = appInstance.options.projectId;
-      if (projectId) {
-        functions.logger.info(`[sendMotorcycleAlertNotification] Admin SDK initialized for Project ID: ${projectId}`);
-      } else {
-        functions.logger.warn('[sendMotorcycleAlertNotification] Admin SDK Project ID is undefined.');
-      }
-    } catch (initError) {
-      functions.logger.error(`[sendMotorcycleAlertNotification] Error getting project ID:`, initError);
-    }
-
     if (!change.after.exists()) {
       functions.logger.info(`[sendMotorcycleAlertNotification] Data deleted for motorcycle ${motorcycleId}. No notification.`);
       return null;
@@ -78,13 +69,23 @@ export const sendMotorcycleAlertNotification = functions.database
     const afterData = change.after.val() as MotorcycleLatestData;
     const beforeData = change.before.exists() ? change.before.val() as MotorcycleLatestData : null;
 
+    functions.logger.info(`[sendMotorcycleAlertNotification] Before data exists: ${change.before.exists()}`);
+    if (beforeData) {
+        functions.logger.info(`[sendMotorcycleAlertNotification] Partial Before data: DTCs count - ${beforeData.dtcs?.length || 0}, Params count - ${Object.keys(beforeData.parameters || {}).length}`);
+    }
+    functions.logger.info(`[sendMotorcycleAlertNotification] Partial After data: DTCs count - ${afterData.dtcs?.length || 0}, Params count - ${Object.keys(afterData.parameters || {}).length}, dataValid: ${afterData.dataValid}`);
+
+
     let alertToSend: { type: 'criticalDtc' | 'warningDtc' | 'parameter'; title: string; body: string; dtc?: DTC; paramName?: string } | null = null;
 
     // 1. Check for new/escalated Critical DTCs
     if (afterData.dtcs) {
+      functions.logger.info(`[sendMotorcycleAlertNotification] Checking ${afterData.dtcs.length} DTCs in afterData for critical alerts.`);
       for (const dtcAfter of afterData.dtcs) {
+        functions.logger.info(`[sendMotorcycleAlertNotification] Evaluating DTC: ${dtcAfter.code}, Severity: ${dtcAfter.severity}`);
         if (dtcAfter.severity === "critical") {
           const dtcBefore = findDtc(beforeData?.dtcs, dtcAfter.code);
+          functions.logger.info(`[sendMotorcycleAlertNotification] Critical DTC ${dtcAfter.code} found. Before state: ${JSON.stringify(dtcBefore)}`);
           if (!dtcBefore || dtcBefore.severity !== "critical") {
             alertToSend = {
               type: 'criticalDtc',
@@ -92,18 +93,25 @@ export const sendMotorcycleAlertNotification = functions.database
               body: `DTC: ${dtcAfter.code} - ${dtcAfter.description}. Immediate attention required.`,
               dtc: dtcAfter,
             };
-            functions.logger.info(`[sendMotorcycleAlertNotification] Identified new/escalated critical DTC: ${dtcAfter.code}`);
+            functions.logger.info(`[sendMotorcycleAlertNotification] Identified new/escalated critical DTC: ${dtcAfter.code}. AlertToSend SET.`);
             break; 
+          } else {
+            functions.logger.info(`[sendMotorcycleAlertNotification] Critical DTC ${dtcAfter.code} was already present and critical. No new alert.`);
           }
         }
       }
+    } else {
+      functions.logger.info(`[sendMotorcycleAlertNotification] No DTCs in afterData to check for critical alerts.`);
     }
 
     // 2. If no critical alert, check for new/escalated Warning DTCs
     if (!alertToSend && afterData.dtcs) {
+      functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert. Checking ${afterData.dtcs.length} DTCs in afterData for warning alerts.`);
       for (const dtcAfter of afterData.dtcs) {
+        functions.logger.info(`[sendMotorcycleAlertNotification] Evaluating DTC: ${dtcAfter.code}, Severity: ${dtcAfter.severity}`);
         if (dtcAfter.severity === "warning") {
           const dtcBefore = findDtc(beforeData?.dtcs, dtcAfter.code);
+          functions.logger.info(`[sendMotorcycleAlertNotification] Warning DTC ${dtcAfter.code} found. Before state: ${JSON.stringify(dtcBefore)}`);
           if (!dtcBefore || (dtcBefore.severity !== "warning" && dtcBefore.severity !== "critical")) {
              alertToSend = {
               type: 'warningDtc',
@@ -111,18 +119,26 @@ export const sendMotorcycleAlertNotification = functions.database
               body: `DTC: ${dtcAfter.code} - ${dtcAfter.description}. Please check soon.`,
               dtc: dtcAfter,
             };
-            functions.logger.info(`[sendMotorcycleAlertNotification] Identified new/escalated warning DTC: ${dtcAfter.code}`);
+            functions.logger.info(`[sendMotorcycleAlertNotification] Identified new/escalated warning DTC: ${dtcAfter.code}. AlertToSend SET.`);
             break;
+          } else {
+            functions.logger.info(`[sendMotorcycleAlertNotification] Warning DTC ${dtcAfter.code} was already present with same or higher severity. No new alert.`);
           }
         }
       }
+    } else if (!alertToSend && !afterData.dtcs) { // Added check for !afterData.dtcs
+      functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert and no DTCs in afterData to check for warning alerts.`);
     }
+
 
     // 3. If no DTC alert, check for newly invalid parameters
     if (!alertToSend && afterData.parameters) {
+      functions.logger.info(`[sendMotorcycleAlertNotification] No DTC alert. Checking parameters for newly invalid state.`);
       for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
+        functions.logger.info(`[sendMotorcycleAlertNotification] Evaluating Parameter: ${paramName}, IsValid: ${paramAfter.isValid}, Value: ${paramAfter.value}`);
         if (paramAfter.isValid === false) {
           const paramBefore = beforeData?.parameters?.[paramName];
+          functions.logger.info(`[sendMotorcycleAlertNotification] Invalid Parameter ${paramName} found. Before state isValid: ${paramBefore?.isValid}`);
           if (!paramBefore || paramBefore.isValid === true) {
             alertToSend = {
               type: 'parameter',
@@ -130,45 +146,61 @@ export const sendMotorcycleAlertNotification = functions.database
               body: `Parameter "${paramName}" is reporting an issue (value: ${paramAfter.value} ${paramAfter.unit || ''}).`,
               paramName: paramName,
             };
-            functions.logger.info(`[sendMotorcycleAlertNotification] Identified newly invalid parameter: ${paramName}`);
+            functions.logger.info(`[sendMotorcycleAlertNotification] Identified newly invalid parameter: ${paramName}. AlertToSend SET.`);
             break;
+          } else {
+            functions.logger.info(`[sendMotorcycleAlertNotification] Parameter ${paramName} was already invalid. No new alert.`);
           }
         }
       }
+    } else if (!alertToSend && !afterData.parameters) { // Added check for !afterData.parameters
+       functions.logger.info(`[sendMotorcycleAlertNotification] No DTC alert and no parameters in afterData to check.`);
     }
     
-    if (!beforeData && !alertToSend) {
+    // 4. Handle initial data creation (if beforeData did not exist)
+    // This block should only run if beforeData did not exist AND no alert has been set by the diffing logic yet.
+    if (!change.before.exists() && !alertToSend) {
+        functions.logger.info("[sendMotorcycleAlertNotification] This is an initial data write (beforeData does not exist). Checking for alerts in new data.");
         if (afterData.dtcs) {
             const criticalDtc = afterData.dtcs.find(d => d.severity === 'critical');
             if (criticalDtc) {
                  alertToSend = { type: 'criticalDtc', title: "🚨 Critical Motorcycle Alert!", body: `DTC: ${criticalDtc.code} - ${criticalDtc.description}. Immediate attention required.`, dtc: criticalDtc };
-                 functions.logger.info(`[sendMotorcycleAlertNotification] Identified critical DTC on creation: ${criticalDtc.code}`);
+                 functions.logger.info(`[sendMotorcycleAlertNotification] Identified critical DTC on creation: ${criticalDtc.code}. AlertToSend SET.`);
             } else {
                 const warningDtc = afterData.dtcs.find(d => d.severity === 'warning');
                 if (warningDtc) {
                     alertToSend = { type: 'warningDtc', title: "⚠️ Motorcycle Warning", body: `DTC: ${warningDtc.code} - ${warningDtc.description}. Please check soon.`, dtc: warningDtc };
-                    functions.logger.info(`[sendMotorcycleAlertNotification] Identified warning DTC on creation: ${warningDtc.code}`);
+                    functions.logger.info(`[sendMotorcycleAlertNotification] Identified warning DTC on creation: ${warningDtc.code}. AlertToSend SET.`);
                 }
             }
         }
-        if (!alertToSend && afterData.parameters) {
+        if (!alertToSend && afterData.parameters) { // Note: '!alertToSend' ensures we don't overwrite a DTC alert
             for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
+                 functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write - Evaluating Parameter: ${paramName}, IsValid: ${paramAfter.isValid}, Value: ${paramAfter.value}`);
                 if (paramAfter.isValid === false) {
                     alertToSend = { type: 'parameter', title: "🔧 Motorcycle Parameter Alert", body: `Parameter "${paramName}" is reporting an issue (value: ${paramAfter.value} ${paramAfter.unit || ''}).`, paramName: paramName };
-                     functions.logger.info(`[sendMotorcycleAlertNotification] Identified invalid parameter on creation: ${paramName}`);
-                    break;
+                     functions.logger.info(`[sendMotorcycleAlertNotification] Identified invalid parameter on creation: ${paramName}. AlertToSend SET.`);
+                    break; // Take the first invalid parameter
                 }
             }
         }
+        if (!alertToSend) {
+             functions.logger.info("[sendMotorcycleAlertNotification] Initial data write, but no critical/warning DTCs or invalid parameters found in new data.");
+        }
+    } else if (change.before.exists() && !alertToSend) { // Modified condition for clarity
+        // This means beforeData existed AND no diff-based alert was found.
+        functions.logger.info("[sendMotorcycleAlertNotification] beforeData existed, and no new/escalated alerts found through diffing.");
     }
 
+
     if (!alertToSend) {
-      functions.logger.info("[sendMotorcycleAlertNotification] No new critical/warning DTCs or parameter issues identified. No notification sent.");
+      // This log means none of the conditions above were met.
+      functions.logger.info("[sendMotorcycleAlertNotification] Final check: No alertToSend. No new critical/warning DTCs or parameter issues identified. No notification will be sent.");
       return null;
     }
     
     functions.logger.info(
-      `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}. Checking user notification preference for user: ${userId}`
+      `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}. Details: ${JSON.stringify(alertToSend)}. Checking user notification preference for user: ${userId}`
     );
 
     let userAppNotificationsEnabled = true; 
@@ -176,6 +208,9 @@ export const sendMotorcycleAlertNotification = functions.database
       const prefSnapshot = await admin.database().ref(`/users/${userId}/userPreferences/notificationsEnabled`).get();
       if (prefSnapshot.exists() && prefSnapshot.val() === false) {
         userAppNotificationsEnabled = false;
+        functions.logger.info(`[sendMotorcycleAlertNotification] User ${userId} has app-level FCM notifications DISABLED in preferences.`);
+      } else {
+         functions.logger.info(`[sendMotorcycleAlertNotification] User ${userId} has app-level FCM notifications ENABLED in preferences (or no preference set, defaulting to enabled).`);
       }
     } catch (prefError) {
       functions.logger.error(
@@ -184,11 +219,11 @@ export const sendMotorcycleAlertNotification = functions.database
       );
     }
 
-    let motorcycleDisplayName = `Motorcycle (VIN: ${motorcycleId})`;
+    let motorcycleDisplayName = `Motorcycle (${motorcycleId})`;
     try {
       const profileSnapshot = await admin
         .database()
-        .ref(`/users/${userId}/motorcycles/${motorcycleId}/profile`) // Fetch full profile
+        .ref(`/users/${userId}/motorcycles/${motorcycleId}/profile`) 
         .get();
       const profile = profileSnapshot.val() as MotorcycleProfile | null;
 
