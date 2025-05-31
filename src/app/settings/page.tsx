@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText } from 'lucide-react'; // Added FileText
+import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, Download, Smartphone, Laptop } from 'lucide-react';
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
@@ -142,7 +142,7 @@ export default function SettingsPage() {
       toast({title: "Error", description: "Could not fetch motorcycle list.", variant: "destructive"});
     });
     return () => unsubscribe();
-  }, [showProvisioningDialog, toast, selectedMotorcycleId]); // Added selectedMotorcycleId to dependencies
+  }, [showProvisioningDialog, toast, selectedMotorcycleId]);
 
   useEffect(() => {
     const selected = motorcycles.find(m => m.id === selectedMotorcycleId);
@@ -151,7 +151,6 @@ export default function SettingsPage() {
       setWifiSSID(selected.wifiSSID || '');
       setWifiPassword(selected.wifiPassword || '');
     } else if (motorcycles.length > 0 && !selectedMotorcycleId) {
-      // If no motorcycle is selected but motorcycles are available, select the first one by default.
       setSelectedMotorcycleId(motorcycles[0].id);
     } else if (motorcycles.length === 0) {
         setMotorcycleVin('');
@@ -343,10 +342,10 @@ export default function SettingsPage() {
                   <div
                     id={label.toLowerCase().replace(/\s/g, '-')}
                     className={cn(
-                      "w-full border border-input bg-muted px-2 py-1.5 rounded-md text-xs text-muted-foreground min-h-[30px] overflow-hidden min-w-0", // Base styles
-                        isSensitive && !showSensitiveData[label] // Condition for blurred state
-                        ? "blur-sm select-none flex items-center" // Classes for blurred state
-                        : (isToken ? "break-all" : "break-words") // REVEALED: Firebase ID Token uses break-all, others use break-words
+                      "w-full border border-input bg-muted px-2 py-1.5 rounded-md text-xs text-muted-foreground min-h-[30px] overflow-hidden min-w-0", 
+                        isSensitive && !showSensitiveData[label] 
+                        ? "blur-sm select-none flex items-center" 
+                        : (isToken ? "break-all" : "break-words") 
                     )}
                     onClick={() => { if (isSensitive && !showSensitiveData[label]) toggleSensitiveData(label);}}
                     title={isSensitive && !showSensitiveData[label] ? "Click to reveal" : (value && value.length > 50 ? value: "")}
@@ -554,6 +553,46 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+              
+              <Separator />
+
+              <div>
+                <div className="flex items-center mb-4">
+                    <Download className="mr-3 h-5 w-5 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold text-foreground">Install MotoVision App</h3>
+                </div>
+                <div className="space-y-4 pl-8">
+                    <Card className="rounded-lg border p-4 bg-card">
+                        <CardDescription className="text-sm text-muted-foreground mb-4">
+                            Get a more integrated experience by adding MotoVision to your device's home screen.
+                        </CardDescription>
+                        <div className="space-y-3">
+                            <div className="flex items-start">
+                                <Smartphone className="mr-3 h-4 w-4 text-primary mt-0.5 shrink-0" />
+                                <div>
+                                    <h4 className="font-medium text-sm text-card-foreground">Mobile Devices (Android/iOS)</h4>
+                                    <p className="text-xs text-muted-foreground">
+                                        Open MotoVision in your browser (Chrome for Android, Safari for iOS).
+                                        Look for an "Install app," "Add to Home Screen," option in the browser menu, or an icon in the address bar.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <Laptop className="mr-3 h-4 w-4 text-primary mt-0.5 shrink-0" />
+                                <div>
+                                    <h4 className="font-medium text-sm text-card-foreground">Desktop (Chrome/Edge)</h4>
+                                    <p className="text-xs text-muted-foreground">
+                                        In Chrome or Edge, look for an install icon in the address bar (often looks like a monitor with a down arrow).
+                                        Alternatively, check the browser's main menu (usually three dots) for an "Install MotoVision..." option.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+              </div>
+
+
                <Separator />
                 <div>
                     <div className="flex items-center mb-4">
@@ -598,3 +637,4 @@ export default function SettingsPage() {
     </ProtectedRoute>
   );
 }
+
