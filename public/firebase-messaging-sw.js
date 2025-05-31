@@ -1,14 +1,16 @@
 
-// public/firebase-messaging-sw.js
-// This service worker script is essential for receiving web push notifications.
+// Import the Firebase app and messaging modules
+// These imports work because the Firebase SDK uses a UMD build that can be imported this way in service workers.
+// Ensure your bundler (Next.js/Webpack) doesn't try to tree-shake or process these differently for the SW context.
+// If you face issues, you might need to use importScripts('https://www.gstatic.com/firebasejs/X.Y.Z/firebase-app.js') and .../firebase-messaging.js instead.
+// However, modern Firebase SDKs often handle this better.
 
-// Scripts for Firebase products
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-// Initialize the Firebase app in the service worker
-// Pass in the messagingSenderId.
-// IMPORTANT: Replace with your actual Firebase project configuration:
+console.log('[firebase-messaging-sw.js] Service worker script loading.');
+
+// Your web app's Firebase configuration - MUST match the one in your main app
 const firebaseConfig = {
   apiKey: "AIzaSyCTMt2Ou_5y7eiw9-XoCCf28ZdRgBDjfvg",
   authDomain: "motor-42313.firebaseapp.com",
@@ -20,57 +22,74 @@ const firebaseConfig = {
   databaseURL: "https://motor-42313-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
-firebase.initializeApp(firebaseConfig);
+try {
+  const app = initializeApp(firebaseConfig);
+  const messaging = getMessaging(app);
 
+  onBackgroundMessage(messaging, (payload) => {
+    console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-// Retrieve an instance of Firebase Messaging so that it can handle background messages.
-const messaging = firebase.messaging();
+    // Customize notification here
+    // The payload structure depends on what your server sends.
+    // Standard FCM notifications have a `notification` field.
+    // Data-only messages will have data in `payload.data`.
+    const notificationTitle = payload.notification?.title || 'MotoVision Alert';
+    const notificationOptions = {
+      body: payload.notification?.body || 'You have a new update from MotoVision.',
+      icon: '/icons/icon-192x192.png', // Ensure this icon exists in your public/icons folder
+      badge: '/icons/icon-192x192.png', // Optional: A badge for the notification
+      // You can add more options like actions, vibrate, etc.
+      // actions: [
+      //   { action: 'view_dashboard', title: 'View Dashboard' }
+      // ]
+    };
 
-messaging.onBackgroundMessage((payload) => {
-  console.log(
-    '[firebase-messaging-sw.js] Received background message ',
-    payload
-  );
-  // Customize notification here
-  const notificationTitle = payload.notification?.title || 'MotoVision Alert';
-  const notificationOptions = {
-    body: payload.notification?.body || 'You have a new update.',
-    icon: payload.notification?.icon || '/motovision-icon-192.png', // Default icon
-    image: payload.data?.image, // Optional: if you send an image URL in the data payload
-    badge: '/motovision-badge-72.png', // Optional: for Android
-    vibrate: [200, 100, 200], // Optional: vibration pattern
-    data: {
-      url: payload.data?.url || '/', // URL to open when notification is clicked
-      // Add any other data you want to pass to the click event
-    },
-    actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [], // E.g. [{ action: 'explore', title: 'Explore now' }]
-  };
+    // event.waitUntil is important to ensure the service worker stays alive
+    // until the notification is shown.
+    self.registration.showNotification(notificationTitle, notificationOptions)
+      .then(() => console.log('[firebase-messaging-sw.js] Notification shown.'))
+      .catch(err => console.error('[firebase-messaging-sw.js] Error showing notification:', err));
+  });
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+  // Optional: Log successful SW registration or activation
+  self.addEventListener('install', (event) => {
+    console.log('[firebase-messaging-sw.js] Service worker installed.');
+  });
+  
+  self.addEventListener('activate', (event) => {
+    console.log('[firebase-messaging-sw.js] Service worker activated.');
+    // It's good practice to claim clients here to ensure the SW controls pages immediately
+    event.waitUntil(clients.claim());
+  });
 
-// Optional: Handle notification click
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close(); // Close the notification
+  // Optional: Handle notification clicks
+  // self.addEventListener('notificationclick', (event) => {
+  //   console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification);
+  //   event.notification.close(); // Close the notification
+  
+  //   // Example: Open the app or a specific page
+  //   const urlToOpen = new URL('/', self.location.origin).href;
+  
+  //   event.waitUntil(
+  //     clients.matchAll({
+  //       type: 'window',
+  //       includeUncontrolled: true
+  //     }).then((windowClients) => {
+  //       // Check if there is already a window/tab open with the target URL
+  //       const existingClient = windowClients.find(client => client.url === urlToOpen && 'focus' in client);
+  
+  //       if (existingClient) {
+  //         return existingClient.focus();
+  //       } else {
+  //         // If not, open a new window/tab
+  //         if (clients.openWindow) {
+  //           return clients.openWindow(urlToOpen);
+  //         }
+  //       }
+  //     })
+  //   );
+  // });
 
-  const urlToOpen = event.notification.data?.url || '/';
-
-  // This looks to see if the current is already open and focuses it.
-  event.waitUntil(
-    clients
-      .matchAll({
-        type: 'window',
-        includeUncontrolled: true,
-      })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
-  );
-});
+} catch (error) {
+  console.error('[firebase-messaging-sw.js] Error initializing Firebase Messaging in SW:', error);
+}
