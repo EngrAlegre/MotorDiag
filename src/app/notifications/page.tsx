@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useAppNotifications } from '../../hooks/useAppNotifications'; // Changed to relative path
+import { useAppNotifications } from '@/hooks/useAppNotifications';
 import type { AppNotification } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

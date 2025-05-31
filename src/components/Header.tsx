@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MotoVisionLogo } from '@/components/MotoVisionLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // AvatarImage removed as not used
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,15 +19,16 @@ import { User, LogOut, Settings, LayoutDashboard, DownloadCloud, Bell, AlertCirc
 import { usePWAInstallPrompt } from '@/hooks/usePWAInstallPrompt';
 import { Badge } from '@/components/ui/badge';
 import React from 'react';
-import { useAppNotifications } from '../hooks/useAppNotifications'; // Changed to relative path
+import { useAppNotifications } from '@/hooks/useAppNotifications'; // Import the new hook
 import type { AppNotification } from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // For navigation
 
 export function Header() {
   const { currentUser, logout, loading: authLoading } = useAuth();
   const { canInstall, handleInstall } = usePWAInstallPrompt();
   const router = useRouter();
 
+  // Use the real notifications hook
   const {
     notifications,
     unreadCount,
@@ -146,6 +147,8 @@ export function Header() {
                           key={notification.id}
                           className={`flex flex-col items-start gap-1.5 p-3 cursor-pointer ${!notification.read ? 'bg-accent/50 dark:bg-accent/20' : ''}`}
                           onClick={() => handleNotificationClick(notification)}
+                          // Prevent dropdown from closing if specific actions are taken, useful for future action buttons inside notification
+                          // onSelect={(e) => e.preventDefault()} 
                         >
                           <div className="flex items-center w-full">
                             {getNotificationIcon(notification.type)}
