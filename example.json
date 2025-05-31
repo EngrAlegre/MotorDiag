@@ -27,6 +27,12 @@
                 "description": "Lost Communication With ECM/PCM",
                 "severity": "warning",
                 "timestamp": 1718000002500
+              },
+              {
+                "code": "P0123",
+                "description": "Throttle Position Sensor High",
+                "severity": "critical",
+                "timestamp": 1718000002700
               }
             ],
             "parameters": {

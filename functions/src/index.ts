@@ -16,32 +16,41 @@ interface DTC {
   timestamp: number;
 }
 
-// Interface for basic motorcycle profile data (copied from web app for richer notifications)
+// Interface for basic motorcycle profile data
 interface MotorcycleProfile {
   make?: string;
   model?: string;
   vin?: string;
   year?: string;
-  wifiSSID?: string;
-  wifiPassword?: string;
-  addedAt?: string;
+  // Add other profile fields if needed, e.g., name
 }
 
-/**
- * Sends a push notification when a new critical Diagnostic Trouble Code (DTC)
- * is added to a motorcycle's data in the Realtime Database.
- */
+
 export const sendCriticalDtcNotification = functions.database
   .ref("/users/{userId}/motorcycles/{motorcycleId}/latest/dtcs/{dtcIndex}")
   .onCreate(async (snapshot, context) => {
     const dtc = snapshot.val() as DTC | null;
     const userId = context.params.userId;
     const motorcycleId = context.params.motorcycleId;
-    const dtcIndex = context.params.dtcIndex;
+    const dtcIndex = context.params.dtcIndex; // For logging
 
     functions.logger.info(
       `[sendCriticalDtcNotification] Triggered for user: ${userId}, motorcycle: ${motorcycleId}, dtcIndex: ${dtcIndex}`
     );
+
+    // Log Admin SDK Project ID
+    try {
+      const appInstance = admin.app(); // Get the default app instance
+      const projectId = appInstance.options.projectId;
+      if (projectId) {
+        functions.logger.info(`[sendCriticalDtcNotification] Admin SDK initialized for Project ID: ${projectId}`);
+      } else {
+        functions.logger.warn('[sendCriticalDtcNotification] Admin SDK Project ID is undefined. This might indicate an initialization issue.');
+      }
+    } catch (initError) {
+      functions.logger.error(`[sendCriticalDtcNotification] Error getting project ID from Admin SDK:`, initError);
+    }
+
 
     if (!dtc) {
       functions.logger.warn(
@@ -76,7 +85,7 @@ export const sendCriticalDtcNotification = functions.database
         `[sendCriticalDtcNotification] Error fetching FCM tokens node for user ${userId}:`,
         dbError
       );
-      return null;
+      return null; // Exit if we can't get tokens
     }
 
     if (!tokensSnapshot.exists()) {
@@ -101,15 +110,16 @@ export const sendCriticalDtcNotification = functions.database
     functions.logger.info(
       `[sendCriticalDtcNotification] Found ${validTokens.length} valid FCM token(s) for user ${userId}: ${JSON.stringify(validTokens)}`
     );
-
+    
+    // Fetch motorcycle profile for a richer notification message
     let motorcycleDisplayName = `Motorcycle (VIN: ${motorcycleId})`; // Fallback using VIN
     try {
       const profileSnapshot = await admin
         .database()
-        .ref(`/users/${userId}/motorcycles/${motorcycleId}/profile`) // Assuming 'profile' node exists as per example.json
+        .ref(`/users/${userId}/motorcycles/${motorcycleId}/profile`) // Assuming 'profile' node exists
         .get();
       if (profileSnapshot.exists()) {
-        const profile = profileSnapshot.val() as MotorcycleProfile;
+        const profile = profileSnapshot.val() as MotorcycleProfile; // Assuming MotorcycleProfile type
         const make = profile.make || "";
         const model = profile.model || "";
         const vin = profile.vin || motorcycleId; // Use profile.vin if available, else context motorcycleId
@@ -119,7 +129,6 @@ export const sendCriticalDtcNotification = functions.database
         } else if (vin) { // if no make/model, just use VIN
             motorcycleDisplayName = `Motorcycle (VIN: ${vin})`;
         }
-        // If profile exists but make, model, and vin are all empty/undefined, it will use the initial fallback.
         functions.logger.info(`[sendCriticalDtcNotification] Motorcycle display name set to: "${motorcycleDisplayName}"`);
       } else {
         functions.logger.info(`[sendCriticalDtcNotification] No profile found for motorcycle ${motorcycleId}, using default display name: "${motorcycleDisplayName}".`);
@@ -129,7 +138,9 @@ export const sendCriticalDtcNotification = functions.database
         `[sendCriticalDtcNotification] Error fetching motorcycle profile for user ${userId}, motorcycle ${motorcycleId}:`,
         error
       );
+      // Continue with default display name if profile fetch fails
     }
+
 
     const payload = {
       notification: {
@@ -141,7 +152,7 @@ export const sendCriticalDtcNotification = functions.database
         motorcycleId: motorcycleId,
         dtcCode: dtc.code,
         severity: dtc.severity,
-        click_action: `/dashboard/${motorcycleId}`, 
+        click_action: `/dashboard/${motorcycleId}`, // For PWA to handle click
       },
     };
 
@@ -155,6 +166,7 @@ export const sendCriticalDtcNotification = functions.database
         `[sendCriticalDtcNotification] FCM sendToDevice response for user ${userId}: Success count: ${response.successCount}, Failure count: ${response.failureCount}`
       );
 
+      // Clean up invalid tokens
       if (response.failureCount > 0) {
         response.results.forEach((result, index) => {
           const error = result.error;
@@ -162,6 +174,7 @@ export const sendCriticalDtcNotification = functions.database
             functions.logger.error(
               `[sendCriticalDtcNotification] Failure sending to token ${validTokens[index]} for user ${userId}: Code: ${error.code}, Message: ${error.message}`
             );
+            // Check for common error codes indicating an invalid or unregistered token
             if (
               error.code === "messaging/invalid-registration-token" ||
               error.code === "messaging/registration-token-not-registered"
@@ -190,13 +203,18 @@ export const sendCriticalDtcNotification = functions.database
           }
         });
       }
-    } catch (error) {
+    } catch (error) 
+     {
+      // Use a more generic error type and check for specific properties
+      const genericError = error as any; // Cast to 'any' to access potential properties
       functions.logger.error(
         `[sendCriticalDtcNotification] Critical error during sendToDevice call for user ${userId}:`,
-        error
+        genericError
       );
+      if (genericError && genericError.errorInfo) {
+         functions.logger.error(`[sendCriticalDtcNotification] Detailed errorInfo: ${JSON.stringify(genericError.errorInfo)}`);
+      }
     }
-    return null;
+    return null; 
   });
 
-    
