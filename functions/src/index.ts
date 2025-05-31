@@ -157,7 +157,7 @@ export const sendCriticalDtcNotification = functions.database
     };
 
     functions.logger.info(
-      `[sendCriticalDtcNotification] Preparing to send notification with payload: ${JSON.stringify(payload)} to tokens: ${JSON.stringify(validTokens)}`
+      `[sendCriticalDtcNotification] Preparing to send notification for user ${userId}, motorcycle ${motorcycleId} to ${validTokens.length} token(s). Payload: ${JSON.stringify(payload)}`
     );
 
     try {
@@ -203,10 +203,8 @@ export const sendCriticalDtcNotification = functions.database
           }
         });
       }
-    } catch (error) 
-     {
-      // Use a more generic error type and check for specific properties
-      const genericError = error as any; // Cast to 'any' to access potential properties
+    } catch (error) {
+      const genericError = error as any;
       functions.logger.error(
         `[sendCriticalDtcNotification] Critical error during sendToDevice call for user ${userId}:`,
         genericError
@@ -217,4 +215,3 @@ export const sendCriticalDtcNotification = functions.database
     }
     return null; 
   });
-
