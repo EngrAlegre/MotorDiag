@@ -1,43 +1,99 @@
+
 {
-  "timestamp": 1718000000000,
-  "protocol": "CAN",
-  "parameters": {
-    "EngineRPM": {
-      "name": "EngineRPM",
-      "unit": "rpm",
-      "value": 3200,
-      "min": 0,
-      "max": 12000,
-      "isValid": true,
-      "lastUpdate": 1718000000000
+  "users": {
+    "bHi1FkvPBQQn9YsGjFgkzJqoRLJ2": {
+      "motorcycles": {
+        "01234567899": {
+          "profile": {
+            "make": "Yamaha",
+            "model": "Sniper",
+            "vin": "01234567899",
+            "year": "2015",
+            "wifiSSID": "HAHAHA 2.4G",
+            "wifiPassword": "PLDTWIFI99xwhm",
+            "addedAt": "2025-05-30T18:45:31.905Z"
+          },
+          "latest": {
+            "timestamp": 1718000002000,
+            "protocol": "CAN_11BIT",
+            "dataValid": true,
+            "systemStatus": "Critical",
+            "parameters": {
+              "BatteryVoltage": { "value": 10.2, "unit": "V", "min": 11.8, "max": 14.8, "isValid": false, "lastUpdate": 1718000002000 },
+              "EngineRPM": { "value": 0, "unit": "RPM", "min": 0, "max": 12000, "isValid": true, "lastUpdate": 1718000002000 },
+              "CoolantTemperature": { "value": 75, "unit": "°C", "min": 60, "max": 105, "isValid": true, "lastUpdate": 1718000002000 },
+              "OilLevel": { "value": 70, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000002000 },
+              "FuelLevel": { "value": 40, "unit": "%", "min": 10, "max": 100, "isValid": true, "lastUpdate": 1718000002000 },
+              "VehicleSpeed": { "value": 0, "unit": "km/h", "min": 0, "max": 250, "isValid": true, "lastUpdate": 1718000002000 },
+              "ThrottlePosition": { "value": 0, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000002000 }
+            },
+            "dtcs": [
+              { "code": "P0562", "description": "System Voltage Low", "severity": "critical", "timestamp": 1718000002000 },
+              { "code": "P0563", "description": "System Voltage High", "severity": "critical", "timestamp": 1718000002000 }
+            ]
+          }
+        }
+      }
     },
-    "BatteryVoltage": {
-      "name": "BatteryVoltage",
-      "unit": "V",
-      "value": 12.7,
-      "min": 11,
-      "max": 14.5,
-      "isValid": true,
-      "lastUpdate": 1718000000000
+    "fTNbzyxHm6SlyDtWubvzbTEShzY2": {
+      "motorcycles": {
+        "012345678910": {
+          "profile": {
+            "make": "Honda",
+            "model": "TMX",
+            "vin": "012345678910",
+            "year": "2014",
+            "addedAt": "2025-05-23T08:04:45.156Z"
+          },
+          "latest": {
+            "timestamp": 1718000003000,
+            "protocol": "ISO_14230",
+            "dataValid": true,
+            "systemStatus": "Warning",
+            "parameters": {
+              "BatteryVoltage": { "value": 12.5, "unit": "V", "min": 11.8, "max": 14.8, "isValid": true, "lastUpdate": 1718000003000 },
+              "EngineRPM": { "value": 4500, "unit": "RPM", "min": 0, "max": 9000, "isValid": true, "lastUpdate": 1718000003000 },
+              "CoolantTemperature": { "value": 95, "unit": "°C", "min": 60, "max": 100, "isValid": false, "lastUpdate": 1718000003000 },
+              "OilLevel": { "value": 65, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000003000 },
+              "FuelLevel": { "value": 35, "unit": "%", "min": 10, "max": 100, "isValid": true, "lastUpdate": 1718000003000 },
+              "VehicleSpeed": { "value": 45, "unit": "km/h", "min": 0, "max": 180, "isValid": true, "lastUpdate": 1718000003000 },
+              "ThrottlePosition": { "value": 50, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000003000 }
+            },
+            "dtcs": [
+              { "code": "P0115", "description": "Engine Coolant Temp Circuit Malfunction", "severity": "warning", "timestamp": 1718000003000 }
+            ]
+          }
+        }
+      }
     },
-    "CoolantTemp": {
-      "name": "CoolantTemp",
-      "unit": "°C",
-      "value": 85,
-      "min": 60,
-      "max": 110,
-      "isValid": true,
-      "lastUpdate": 1718000000000
+    "lE4PW4CYHVaTOLMPJUHHMWzCMcp2": {
+      "motorcycles": {
+        "yamaha_001": {
+          "profile": {
+             "make": "Yamaha",
+             "model": "FZ",
+             "vin": "yamaha_001",
+             "year": "2018",
+             "addedAt": "2025-05-20T10:00:00.000Z"
+          },
+          "latest": {
+            "timestamp": 1718000004000,
+            "protocol": "CAN_29BIT",
+            "dataValid": true,
+            "systemStatus": "Warning",
+            "parameters": {
+              "BatteryVoltage": { "value": 12.6, "unit": "V", "min": 11.8, "max": 14.8, "isValid": true, "lastUpdate": 1718000004000 },
+              "EngineRPM": { "value": 3800, "unit": "RPM", "min": 0, "max": 11000, "isValid": true, "lastUpdate": 1718000004000 },
+              "CoolantTemperature": { "value": 85, "unit": "°C", "min": 60, "max": 105, "isValid": true, "lastUpdate": 1718000004000 },
+              "OilLevel": { "value": 60, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000004000 },
+              "FuelLevel": { "value": 15, "unit": "%", "min": 10, "max": 100, "isValid": false, "lastUpdate": 1718000004000 },
+              "VehicleSpeed": { "value": 30, "unit": "km/h", "min": 0, "max": 220, "isValid": true, "lastUpdate": 1718000004000 },
+              "ThrottlePosition": { "value": 40, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000004000 }
+            },
+            "dtcs": []
+          }
+        }
+      }
     }
-  },
-  "dtcs": [
-    {
-      "code": "P0115",
-      "description": "Engine Coolant Temperature Sensor Circuit Malfunction",
-      "severity": "warning",
-      "timestamp": 1718000000000
-    }
-  ],
-  "dataValid": true,
-  "systemStatus": "Normal"
+  }
 }
