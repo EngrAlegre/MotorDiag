@@ -83,7 +83,7 @@ export function useNotificationPermission() {
       setPermission(currentPermission);
 
       if (currentPermission === 'granted') {
-        toast({ title: "Permission Granted", description: "Attempting to retrieve FCM token..." });
+        // Toast for this case is removed, token retrieval will happen below
       } else if (currentPermission === 'default') {
         const requestedStatus = await Notification.requestPermission();
         setPermission(requestedStatus);
@@ -108,7 +108,7 @@ export function useNotificationPermission() {
       if (currentToken) {
         setFcmToken(currentToken);
         console.log('[useNotificationPermission] FCM Token retrieved:', currentToken);
-        await saveTokenToDatabase(currentToken);
+        await saveTokenToDatabase(currentToken); // This will show the "Token Synced Successfully!" toast
         return true;
       } else {
         const msg = 'Failed to retrieve FCM token. This can happen if the service worker registration fails or if the VAPID key is incorrect. Please check the browser console for more specific errors like "messaging/failed-service-worker-registration" or VAPID key issues.';
@@ -139,10 +139,10 @@ export function useNotificationPermission() {
     }
   }, [permission, toast]);
 
-  // Attempt to get token if permission is already granted on load
+  // Attempt to get token if permission is already granted on load, but DON'T show success toast.
   useEffect(() => {
     const initTokenWithExistingPermission = async () => {
-      if (permission === 'granted' && !fcmToken && messagingInstance) {
+      if (permission === 'granted' && !fcmToken && messagingInstance) { 
         if (VAPID_KEY === "YOUR_VAPID_PUBLIC_KEY_HERE" || !VAPID_KEY) {
           console.warn("[useNotificationPermission] VAPID key not configured. Cannot auto-fetch token on load.");
           return;
@@ -151,10 +151,11 @@ export function useNotificationPermission() {
           console.log("[useNotificationPermission] Permission already granted. Attempting to get token on load...");
           const currentToken = await getToken(messagingInstance, { vapidKey: VAPID_KEY });
           if (currentToken) {
-            setFcmToken(currentToken);
-            console.log('[useNotificationPermission] FCM Token retrieved on load:', currentToken);
-            // Optionally save to DB again, or assume it's there if fcmToken state was just unset
-            await saveTokenToDatabase(currentToken); 
+            setFcmToken(currentToken); // Set the token for display
+            console.log('[useNotificationPermission] FCM Token retrieved on load (no automatic save/toast):', currentToken);
+            // We do NOT call saveTokenToDatabase here to prevent the toast on every page load.
+            // The token is likely already in the DB if permission was previously granted.
+            // If it's not, or if the user wants to ensure it's up-to-date, they can use the "FCM Token" button.
           } else {
             console.warn('[useNotificationPermission] No token retrieved on load despite granted permission. Service worker might still be an issue.');
           }
@@ -164,7 +165,7 @@ export function useNotificationPermission() {
       }
     };
     initTokenWithExistingPermission();
-  }, [permission, fcmToken, toast]); // Added fcmToken to prevent re-running if token is already set
+  }, [permission, fcmToken]); 
 
   return { permission, fcmToken, error, requestPermission };
 }
