@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, DownloadCloud, Info, KeyRound, AlertCircle, RefreshCw, Save } from 'lucide-react';
+import { Palette, BellRing, Settings2, SlidersHorizontal, Wifi, QrCode, Copy, Eye, EyeOff, FileText, DownloadCloud, Info, KeyRound, AlertCircle, RefreshCw, Save, Loader2 } from 'lucide-react';
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
@@ -20,14 +20,18 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { QRCodeCanvas } from 'qrcode.react';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set as firebaseSet, off } from 'firebase/database'; // Added firebaseSet and off
 import { db as firebaseDB } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { usePWAInstallPrompt } from '@/hooks/usePWAInstallPrompt';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 export default function SettingsPage() {
-  const [criticalAlertsEnabled, setCriticalAlertsEnabled] = useState(false);
+  const { currentUser } = useAuth(); // Get currentUser from AuthContext
+  const [appNotificationsEnabled, setAppNotificationsEnabled] = useState<boolean | null>(null); // null while loading
+  const [isPreferenceLoading, setIsPreferenceLoading] = useState(true);
+
   const [measurementUnits, setMeasurementUnits] = useState<'metric' | 'imperial'>('metric');
   const [idToken, setIdToken] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
@@ -44,40 +48,75 @@ export default function SettingsPage() {
 
   const { canInstall: pwaCanInstall, handleInstall: handlePWAInstall, isStandalone } = usePWAInstallPrompt();
 
-
   const {
-    permission: notificationPermission,
+    permission: browserNotificationPermission, // Renamed to avoid conflict
     fcmToken,
-    error: notificationHookError, // Renamed to avoid conflict with tokenError
+    error: notificationHookError,
     requestPermission
   } = useNotificationPermission();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (notificationPermission === 'granted') {
-      setCriticalAlertsEnabled(true);
-    } else {
-      setCriticalAlertsEnabled(false);
-    }
-  }, [notificationPermission]);
-
-
-  const handleCriticalAlertsToggle = async (checked: boolean) => {
-    if (checked) {
-      if (notificationPermission !== 'granted') {
-        const permissionGranted = await requestPermission();
-        if (!permissionGranted) {
-          setCriticalAlertsEnabled(false);
+    if (currentUser?.uid) {
+      setIsPreferenceLoading(true);
+      const prefRef = ref(firebaseDB, `users/${currentUser.uid}/userPreferences/notificationsEnabled`);
+      const listener = onValue(prefRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setAppNotificationsEnabled(snapshot.val());
+        } else {
+          // Default: if browser permission is granted, default to true, else false for app-level.
+          setAppNotificationsEnabled(browserNotificationPermission === 'granted');
         }
-      } else {
-        setCriticalAlertsEnabled(true);
-        toast({ title: "Critical Alerts Active", description: "Notification permission is already granted." });
+        setIsPreferenceLoading(false);
+      }, (error) => {
+        console.error("Error loading notification preference:", error);
+        setAppNotificationsEnabled(browserNotificationPermission === 'granted'); // Fallback
+        setIsPreferenceLoading(false);
+        toast({ title: "Error", description: "Could not load notification settings.", variant: "destructive" });
+      });
+      return () => off(prefRef, 'value', listener); // Cleanup listener
+    } else if (!currentUser) {
+      // Not logged in or loading user
+      setIsPreferenceLoading(false);
+      setAppNotificationsEnabled(false); // Default to off if no user
+    }
+  }, [currentUser?.uid, browserNotificationPermission, toast]);
+
+
+  const handleAppNotificationsToggle = async (checked: boolean) => {
+    if (!currentUser?.uid) {
+      toast({ title: "Authentication Error", description: "Please log in to change notification settings.", variant: "destructive" });
+      return;
+    }
+    if (isPreferenceLoading) return; // Don't allow changes while loading
+
+    // Optimistically update UI
+    setAppNotificationsEnabled(checked);
+
+    try {
+      const prefRef = ref(firebaseDB, `users/${currentUser.uid}/userPreferences/notificationsEnabled`);
+      await firebaseSet(prefRef, checked);
+      toast({ title: "Settings Saved", description: `App notifications ${checked ? 'enabled' : 'disabled'}.` });
+
+      if (checked && browserNotificationPermission !== 'granted') {
+        // If user is enabling app notifications and browser permission isn't granted, request it.
+        const permissionGrantedByBrowser = await requestPermission();
+        if (!permissionGrantedByBrowser) {
+          // Browser permission denied, so revert app-level preference.
+          setAppNotificationsEnabled(false);
+          await firebaseSet(prefRef, false);
+          toast({ title: "Settings Updated", description: "Browser permission denied. App notifications remain disabled." });
+        }
+        // If permissionGrantedByBrowser is true, useNotificationPermission hook handles FCM token.
       }
-    } else {
-      setCriticalAlertsEnabled(false);
-      toast({ title: "Critical Alerts Paused", description: "App-level alerts paused. Browser permission may still exist." });
+    } catch (error) {
+      console.error("Error saving notification preference:", error);
+      toast({ title: "Save Error", description: "Could not save notification settings.", variant: "destructive" });
+      // Revert optimistic UI update on error
+      setAppNotificationsEnabled(!checked);
     }
   };
+
 
   const [maintenanceRemindersEnabled, setMaintenanceRemindersEnabled] = useState(true);
 
@@ -113,10 +152,8 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    if (!showProvisioningDialog) return;
-    const user = getAuth().currentUser;
-    if (!user) return;
-    const motorcyclesRef = ref(firebaseDB, `users/${user.uid}/motorcycles`);
+    if (!showProvisioningDialog || !currentUser?.uid) return; // Added currentUser check
+    const motorcyclesRef = ref(firebaseDB, `users/${currentUser.uid}/motorcycles`);
     const unsubscribe = onValue(motorcyclesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -145,7 +182,7 @@ export default function SettingsPage() {
       toast({title: "Error", description: "Could not fetch motorcycle list.", variant: "destructive"});
     });
     return () => unsubscribe();
-  }, [showProvisioningDialog, toast, selectedMotorcycleId]);
+  }, [showProvisioningDialog, toast, selectedMotorcycleId, currentUser?.uid]); // Added currentUser.uid
 
   useEffect(() => {
     const selected = motorcycles.find(m => m.id === selectedMotorcycleId);
@@ -168,7 +205,7 @@ export default function SettingsPage() {
       setTokenError(null);
       setIdToken(null);
       try {
-        const user = getAuth().currentUser;
+        const user = getAuth().currentUser; // Use getAuth().currentUser directly as useAuth's might not be updated yet in this specific flow
         if (user) {
           const token = await user.getIdToken(true);
           setIdToken(token);
@@ -211,6 +248,7 @@ export default function SettingsPage() {
 
   const renderProvisioningStepContent = () => {
     const selectedMotorcycle = motorcycles.find(m => m.id === selectedMotorcycleId);
+    const currentAuthUser = getAuth().currentUser; // Use getAuth here
 
     switch (provisioningStep) {
       case 'start':
@@ -288,7 +326,7 @@ export default function SettingsPage() {
         );
       case 'configure':
         const provisioningData = [
-          { label: 'User UID', value: getAuth().currentUser?.uid || 'N/A (Log in first)' },
+          { label: 'User UID', value: currentAuthUser?.uid || 'N/A (Log in first)' },
           { label: 'Motorcycle VIN', value: motorcycleVin || 'N/A (Select motorcycle)' },
           { label: 'Make', value: selectedMotorcycle?.make || 'N/A (Select motorcycle)' },
           { label: 'Model', value: selectedMotorcycle?.model || 'N/A (Select motorcycle)' },
@@ -297,7 +335,7 @@ export default function SettingsPage() {
           { label: 'Firebase ID Token', value: idToken || (tokenError || 'Loading token...'), isSensitive: true, isToken: true },
         ];
         const qrPayload = {
-          uid: getAuth().currentUser?.uid || '',
+          uid: currentAuthUser?.uid || '',
           vin: motorcycleVin || '',
           make: selectedMotorcycle?.make || '',
           model: selectedMotorcycle?.model || '',
@@ -450,23 +488,32 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-4 pl-8">
                   <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                      <Label htmlFor="critical-alerts" className="font-medium">Critical Alerts</Label>
+                    <div className="flex-1">
+                      <Label htmlFor="app-notifications" className="font-medium">App-Level Notifications</Label>
                       <p className="text-sm text-muted-foreground">
-                        Receive push notifications for critical system issues.
+                        Enable or disable all push notifications from MotoVision.
                       </p>
-                      {notificationPermission && notificationPermission !== 'default' && (
-                        <p className={`text-xs mt-1 ${notificationPermission === 'granted' ? 'text-green-600' : 'text-red-600'}`}>
-                          Browser notification permission: {notificationPermission}
+                       {browserNotificationPermission && browserNotificationPermission !== 'default' && (
+                        <p className={`text-xs mt-1 ${browserNotificationPermission === 'granted' ? 'text-green-600' : 'text-red-600'}`}>
+                          Browser notification permission: {browserNotificationPermission}.
+                          {browserNotificationPermission === 'denied' && " You may need to change this in browser settings."}
                         </p>
                       )}
+                       {isPreferenceLoading && appNotificationsEnabled === null && (
+                         <p className="text-xs mt-1 text-muted-foreground italic">Loading preference...</p>
+                       )}
                     </div>
+                    {isPreferenceLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
                     <Switch
-                      id="critical-alerts"
-                      checked={criticalAlertsEnabled}
-                      onCheckedChange={handleCriticalAlertsToggle}
-                      aria-label="Toggle critical alerts"
+                      id="app-notifications"
+                      checked={appNotificationsEnabled ?? false}
+                      onCheckedChange={handleAppNotificationsToggle}
+                      disabled={isPreferenceLoading || !currentUser || browserNotificationPermission === 'denied'}
+                      aria-label="Toggle app-level notifications"
                     />
+                    )}
                   </div>
                   <div className="rounded-lg border p-4">
                      <div className="flex items-center justify-between">
@@ -476,13 +523,24 @@ export default function SettingsPage() {
                              Register this browser/device to receive push notifications.
                            </p>
                         </div>
-                        <Button variant="default" size="sm" onClick={requestPermission}>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          onClick={async () => {
+                            if (browserNotificationPermission === 'denied') {
+                              toast({title: "Permission Denied", description: "Browser notifications are denied. Please change this in your browser settings.", variant: "destructive"});
+                              return;
+                            }
+                            await requestPermission();
+                          }}
+                          disabled={browserNotificationPermission === 'denied'}
+                        >
                           <Save className="mr-2 h-3 w-3"/>
                           FCM Token
                         </Button>
                       </div>
                        <p className="text-xs text-muted-foreground mt-2">
-                          Clicking "FCM Token" requests notification permission. If granted, an FCM token is generated for this device and saved to your user profile in the database, enabling push notifications. Ensure your VAPID key is correctly configured in the application code.
+                          Clicking "FCM Token" requests browser notification permission. If granted, an FCM token is generated for this device and saved to your user profile in the database, enabling push notifications. This is needed for "App-Level Notifications" to work.
                        </p>
                       {notificationHookError && (
                         <Alert variant="destructive" className="mt-3">
@@ -510,12 +568,12 @@ export default function SettingsPage() {
                           </p>
                         </div>
                       )}
-                      {!fcmToken && !notificationHookError && notificationPermission === 'granted' && (
+                      {!fcmToken && !notificationHookError && browserNotificationPermission === 'granted' && (
                         <p className="text-xs text-muted-foreground mt-2 italic">
                           Attempting to retrieve FCM token... ensure VAPID key is correct in your Firebase setup and `useNotificationPermission.ts`.
                         </p>
                       )}
-                       {!fcmToken && !notificationHookError && notificationPermission !== 'granted' && (
+                       {!fcmToken && !notificationHookError && browserNotificationPermission !== 'granted' && browserNotificationPermission !== 'denied' && (
                         <p className="text-xs text-muted-foreground mt-2 italic">
                           Click "FCM Token" to grant permission and retrieve a token.
                         </p>
@@ -525,7 +583,7 @@ export default function SettingsPage() {
                     <div>
                       <Label htmlFor="maintenance-reminders" className="font-medium">Maintenance Reminders</Label>
                       <p className="text-sm text-muted-foreground">
-                        Get reminders for scheduled motorcycle maintenance.
+                        Get reminders for scheduled motorcycle maintenance (Feature Coming Soon).
                       </p>
                     </div>
                     <Switch
@@ -533,6 +591,7 @@ export default function SettingsPage() {
                       aria-label="Toggle maintenance reminders"
                       checked={maintenanceRemindersEnabled}
                       onCheckedChange={handleMaintenanceRemindersToggle}
+                      disabled // Feature not yet implemented
                     />
                   </div>
                 </div>
@@ -549,20 +608,21 @@ export default function SettingsPage() {
                   <div className="rounded-lg border p-4">
                     <Label className="font-medium">Measurement Units</Label>
                     <p className="text-sm text-muted-foreground mt-1 mb-3">
-                      Choose your preferred units for speed, temperature, etc.
+                      Choose your preferred units for speed, temperature, etc. (Feature Coming Soon).
                     </p>
                     <RadioGroup
                       value={measurementUnits}
                       onValueChange={(value: string) => setMeasurementUnits(value as 'metric' | 'imperial')}
                       className="space-y-2"
+                      disabled // Feature not yet implemented
                     >
                       <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="metric" id="metric-units" />
-                        <Label htmlFor="metric-units" className="font-normal">Metric (km/h, °C)</Label>
+                        <RadioGroupItem value="metric" id="metric-units" disabled/>
+                        <Label htmlFor="metric-units" className="font-normal text-muted-foreground/70">Metric (km/h, °C)</Label>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="imperial" id="imperial-units" />
-                        <Label htmlFor="imperial-units" className="font-normal">Imperial (mph, °F)</Label>
+                        <RadioGroupItem value="imperial" id="imperial-units" disabled/>
+                        <Label htmlFor="imperial-units" className="font-normal text-muted-foreground/70">Imperial (mph, °F)</Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -678,8 +738,6 @@ export default function SettingsPage() {
                         </Button>
                     </div>
                 </div>
-
-
             </CardContent>
           </Card>
         </main>

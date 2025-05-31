@@ -170,10 +170,38 @@ export const sendMotorcycleAlertNotification = functions.database
       functions.logger.info("[sendMotorcycleAlertNotification] No new critical/warning DTCs or parameter issues identified. No notification sent.");
       return null;
     }
+    
+    functions.logger.info(
+      `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}. Checking user notification preference for user: ${userId}`
+    );
+
+    // Check user's app-level notification preference
+    let userAppNotificationsEnabled = true; // Default to true if preference not found or error
+    try {
+      const prefSnapshot = await admin.database().ref(`/users/${userId}/userPreferences/notificationsEnabled`).get();
+      if (prefSnapshot.exists() && prefSnapshot.val() === false) {
+        userAppNotificationsEnabled = false;
+      }
+    } catch (prefError) {
+      functions.logger.error(
+        `[sendMotorcycleAlertNotification] Error fetching app-level notification preference for user ${userId}:`,
+        prefError
+      );
+      // Proceed with default true if preference fetch fails, to not block critical alerts due to this error.
+    }
+
+    if (!userAppNotificationsEnabled) {
+      functions.logger.info(
+        `[sendMotorcycleAlertNotification] User ${userId} has disabled notifications at the app level. No notification sent.`
+      );
+      return null; // Do not proceed to send
+    }
+
 
     functions.logger.info(
-      `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}. Proceeding to fetch FCM tokens for user: ${userId}`
+      `[sendMotorcycleAlertNotification] User has app notifications enabled. Proceeding to fetch FCM tokens for user: ${userId}`
     );
+
 
     let tokensSnapshot;
     try {
@@ -208,9 +236,6 @@ export const sendMotorcycleAlertNotification = functions.database
       return null;
     }
 
-    functions.logger.info(
-      `[sendMotorcycleAlertNotification] Found ${validTokens.length} valid FCM token(s) for user ${userId}: ${JSON.stringify(validTokens)}`
-    );
     
     let motorcycleDisplayName = `Motorcycle (VIN: ${motorcycleId})`;
     try {
@@ -306,7 +331,7 @@ export const sendMotorcycleAlertNotification = functions.database
         });
       }
     } catch (error) {
-      const genericError = error as any; // Keep the simpler type assertion for now
+      const genericError = error as Error & {errorInfo?: any, codePrefix?: string};
       functions.logger.error(
         `[sendMotorcycleAlertNotification] Critical error during sendToDevice call for user ${userId}:`,
         genericError.message || genericError, genericError
@@ -320,5 +345,3 @@ export const sendMotorcycleAlertNotification = functions.database
     }
     return null; 
   });
-
-    
