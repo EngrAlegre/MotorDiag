@@ -10,7 +10,7 @@ import type { DiagnosticData, DiagnosticStatus } from '@/lib/types';
 import { DiagnosticStatus as StatusEnum } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, Activity, AlertTriangle, ChevronLeft } from "lucide-react"; // Added ChevronLeft
+import { Terminal, Info, Activity, AlertTriangle, ChevronLeft } from "lucide-react";
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams } from 'next/navigation';
@@ -18,7 +18,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { ref, set, update } from 'firebase/database';
 import { db as firebaseDB } from '@/lib/firebase';
-import Link from 'next/link'; // Added Link
+import Link from 'next/link';
 
 export default function MotorcycleDashboardPage() {
   const { currentUser } = useAuth();
@@ -26,7 +26,7 @@ export default function MotorcycleDashboardPage() {
   const motorcycleId = params.motorcycleId as string;
 
   const { currentData, error, setCurrentData } = useFirebaseDiagnostics(motorcycleId);
-  const isLoading = !currentData.dataValid && !error && !currentData.timestamp; // Refined isLoading
+  const isLoading = !error && !currentData.timestamp && !currentData.dataValid;
   const showData = currentData.dataValid && !error;
 
   const firebasePath = `users/${currentUser?.uid || '[user-id]'}/motorcycles/${motorcycleId}/latest`;
@@ -35,17 +35,16 @@ export default function MotorcycleDashboardPage() {
   const availableParameters = Object.keys(currentData.parameters || {});
 
   useEffect(() => {
-    // Auto-select all available parameters initially or when new ones are detected
     if (availableParameters.length > 0) {
       const newParams = availableParameters.filter(p => !selectedParameters.includes(p));
-      if (newParams.length > 0 || selectedParameters.length === 0 && availableParameters.length > 0) { // Ensure initial selection
+      if (newParams.length > 0 || selectedParameters.length === 0 && availableParameters.length > 0) {
          setSelectedParameters(prev => {
-            const updatedSelection = [...new Set([...prev, ...availableParameters])]; // Use Set to avoid duplicates and ensure all current are included
+            const updatedSelection = [...new Set([...prev, ...availableParameters])];
             return updatedSelection;
         });
       }
     }
-  }, [availableParameters, selectedParameters]); // Added selectedParameters to dependency array
+  }, [availableParameters, selectedParameters]);
 
   const handleClearDTCs = async () => {
     if (!currentUser) return;
@@ -70,7 +69,7 @@ export default function MotorcycleDashboardPage() {
           <div className="container mx-auto max-w-7xl">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8">Dashboard for {motorcycleId}</h1>
 
-            {error && !showData && ( // Show error only if not showing data
+            {error && !showData && (
               error.startsWith("No data at path") ? (
                 <Alert variant="default" className="mb-8 border-primary/50 dark:border-primary/40">
                   <Info className="h-4 w-4 text-primary" />
@@ -95,7 +94,7 @@ export default function MotorcycleDashboardPage() {
 
             {isLoading ? (
                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {[...Array(6)].map((_, i) => ( // Show a few skeletons
+                  {[...Array(6)].map((_, i) => (
                     <CardSkeleton key={i}/>
                   ))}
                </div>
@@ -110,13 +109,13 @@ export default function MotorcycleDashboardPage() {
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Active DTCs Detected</AlertTitle>
                         <AlertDescription>
-                          <div className="mt-2 space-y-1">
+                          <div className="mt-2 space-y-2">
                             {currentData.dtcs.map((dtc, index) => (
-                              <div key={index} className="flex items-center gap-2 text-sm">
-                                <span className="font-mono">{dtc.code}</span>
-                                <span>-</span>
-                                <span>{dtc.description}</span>
-                                <span className="text-xs text-muted-foreground">({dtc.severity})</span>
+                              <div key={index} className="flex flex-col sm:flex-row sm:items-start sm:gap-2 text-sm">
+                                <span className="font-mono shrink-0">{dtc.code}</span>
+                                <span className="hidden sm:inline">-</span>
+                                <span className="break-words">{dtc.description}</span>
+                                <span className="text-xs text-muted-foreground sm:ml-auto shrink-0">({dtc.severity})</span>
                               </div>
                             ))}
                           </div>
@@ -151,8 +150,8 @@ export default function MotorcycleDashboardPage() {
                         title={paramName}
                         value={param.value.toLocaleString()}
                         unit={param.unit}
-                        iconName="Activity" // Consider making icon dynamic based on paramName
-                        status={param.isValid ? StatusEnum.NORMAL : StatusEnum.CRITICAL} // Simplified status
+                        iconName="Activity"
+                        status={param.isValid ? StatusEnum.NORMAL : StatusEnum.CRITICAL}
                     />
                   );
                 })}
@@ -211,8 +210,8 @@ export default function MotorcycleDashboardPage() {
                       <tbody>
                         {Object.entries(currentData.parameters).map(([name, param]) => (
                           <tr key={name} className="border-b last:border-b-0">
-                            <td className="px-4 py-2">{name}</td>
-                            <td className="px-4 py-2">{param.value.toLocaleString()}</td>
+                            <td className="px-4 py-2 break-words">{name}</td>
+                            <td className="px-4 py-2 break-words">{param.value.toLocaleString()}</td>
                             <td className="px-4 py-2">{param.unit}</td>
                             <td className="px-4 py-2">{param.min.toLocaleString()}</td>
                             <td className="px-4 py-2">{param.max.toLocaleString()}</td>
@@ -229,7 +228,7 @@ export default function MotorcycleDashboardPage() {
                 </div>
                 )}
               </>
-            ) : !error && !isLoading ? ( // If not loading, not showing data, and no error, means initial state or empty data
+            ) : !error && !isLoading ? (
               <Alert className="mb-8">
                   <Info className="h-4 w-4" />
                   <AlertTitle>No Data Yet</AlertTitle>
@@ -279,3 +278,5 @@ function CardSkeleton() {
     </div>
   )
 }
+
+    
