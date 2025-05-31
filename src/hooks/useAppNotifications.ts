@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ref, onValue, update, query, orderByChild, limitToLast, get } from 'firebase/database';
+import { ref, onValue, update, query, orderByChild, limitToLast, get, set } from 'firebase/database'; // Added set
 import { db as firebaseDB } from '@/lib/firebase';
 import type { AppNotification } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,10 +28,6 @@ export function useAppNotifications() {
 
     setLoading(true);
     const notificationsRef = ref(firebaseDB, `users/${currentUser.uid}/appNotifications`);
-    // Order by timestamp and get the latest N notifications.
-    // Firebase RTDB sorts ascending, so limitToLast gets the newest if timestamps are positive.
-    // For descending server timestamps (negative), use limitToFirst.
-    // Assuming positive timestamps (e.g., Date.now() or ServerValue.TIMESTAMP)
     const notificationsQuery = query(notificationsRef, orderByChild('timestamp'), limitToLast(NOTIFICATIONS_LIMIT));
 
     const unsubscribe = onValue(notificationsQuery, (snapshot) => {
@@ -42,7 +38,7 @@ export function useAppNotifications() {
             id: key,
             ...data[key],
           }))
-          .sort((a, b) => b.timestamp - a.timestamp); // Sort client-side to ensure descending order
+          .sort((a, b) => b.timestamp - a.timestamp); 
 
         setNotifications(newNotifications);
         setUnreadCount(newNotifications.filter(n => !n.read).length);
@@ -50,7 +46,7 @@ export function useAppNotifications() {
       } else {
         setNotifications([]);
         setUnreadCount(0);
-        setError(null); // Or "No notifications found"
+        setError(null); 
       }
       setLoading(false);
     }, (err) => {
@@ -66,14 +62,11 @@ export function useAppNotifications() {
     if (!currentUser?.uid || !notificationId) return;
 
     const notification = notifications.find(n => n.id === notificationId);
-    if (notification && notification.read) return; // Already read
+    if (notification && notification.read) return; 
 
     const notificationRef = ref(firebaseDB, `users/${currentUser.uid}/appNotifications/${notificationId}/read`);
     try {
       await update(ref(firebaseDB), { [`users/${currentUser.uid}/appNotifications/${notificationId}/read`]: true });
-      // Optimistic update for UI responsiveness handled by onValue, but manual if needed:
-      // setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
-      // setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error("Error marking notification as read:", err);
       toast({ title: "Error", description: "Could not update notification status.", variant: "destructive" });
@@ -97,9 +90,6 @@ export function useAppNotifications() {
     try {
       await update(ref(firebaseDB), updates);
       toast({ title: "Success", description: "All notifications marked as read." });
-      // Optimistic update:
-      // setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      // setUnreadCount(0);
     } catch (err) {
       console.error("Error marking all notifications as read:", err);
       toast({ title: "Error", description: "Could not mark all notifications as read.", variant: "destructive" });
@@ -115,8 +105,7 @@ export function useAppNotifications() {
 
     const notificationsRef = ref(firebaseDB, `users/${currentUser.uid}/appNotifications`);
     try {
-      await update(notificationsRef, null); // Setting to null deletes the node
-      // UI will update via onValue listener
+      await set(notificationsRef, null); // Corrected: Use set(ref, null) to delete the node
       toast({ title: "Success", description: "All notifications have been cleared." });
     } catch (err) {
       console.error("Error clearing all notifications:", err);
@@ -127,3 +116,5 @@ export function useAppNotifications() {
 
   return { notifications, unreadCount, loading, error, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications };
 }
+
+    

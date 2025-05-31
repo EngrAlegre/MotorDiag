@@ -12,8 +12,8 @@
             "dtcs": [
               {
                 "code": "P0115",
-                "description": "Engine Coolant Temp Circuit Malfunction",
-                "severity": "warning",
+                "description": "Engine Coolant Temp Circuit Malfunction - CRITICAL",
+                "severity": "critical",
                 "timestamp": 1718000003000
               }
             ],
@@ -27,12 +27,12 @@
                 "value": 12.7
               },
               "CoolantTemperature": {
-                "isValid": true,
+                "isValid": false,
                 "lastUpdate": 1718000002000,
                 "max": 105,
                 "min": 60,
                 "unit": "°C",
-                "value": 75
+                "value": 110 
               },
               "EngineRPM": {
                 "isValid": true,
@@ -76,7 +76,7 @@
               }
             },
             "protocol": "CAN_11BIT",
-            "systemStatus": "Warning",
+            "systemStatus": "Critical",
             "timestamp": 1718000003000
           },
           "profile": {
@@ -102,6 +102,12 @@
                 "description": "Engine Coolant Temp Circuit Malfunction",
                 "severity": "warning",
                 "timestamp": 1718000003000
+              },
+              {
+                "code": "P0420",
+                "description": "Catalyst System Efficiency Below Threshold",
+                "severity": "warning",
+                "timestamp": 1718000004000
               }
             ],
             "parameters": {
@@ -119,15 +125,15 @@
                 "max": 100,
                 "min": 60,
                 "unit": "°C",
-                "value": 95
+                "value": 95 
               },
               "EngineRPM": {
-                "isValid": true,
+                "isValid": false,
                 "lastUpdate": 1718000003000,
                 "max": 9000,
                 "min": 0,
                 "unit": "RPM",
-                "value": 4500
+                "value": -100 
               },
               "FuelLevel": {
                 "isValid": true,
@@ -164,7 +170,7 @@
             },
             "protocol": "ISO_14230",
             "systemStatus": "Warning",
-            "timestamp": 1718000003000
+            "timestamp": 1718000004000
           },
           "profile": {
             "addedAt": "2025-05-23T08:04:45.156Z",
@@ -190,16 +196,22 @@
                 "description": "Mass or Volume Air Flow Circuit Malfunction",
                 "severity": "warning",
                 "timestamp": 1718000005000
+              },
+              {
+                "code": "U0073",
+                "description": "Control Module Communication Bus Off - CRITICAL",
+                "severity": "critical",
+                "timestamp": 1718000006000
               }
             ],
             "parameters": {
               "BatteryVoltage": {
-                "isValid": true,
+                "isValid": false,
                 "lastUpdate": 1718000005000,
                 "max": 14.8,
                 "min": 11.8,
                 "unit": "V",
-                "value": 13.1
+                "value": 10.5 
               },
               "CoolantTemperature": {
                 "isValid": true,
@@ -259,8 +271,8 @@
               }
             },
             "protocol": "CAN_11BIT",
-            "systemStatus": "Warning",
-            "timestamp": 1718000005000
+            "systemStatus": "Critical",
+            "timestamp": 1718000006000
           },
           "profile": {
             "addedAt": "2025-06-01T10:15:00.000Z",
@@ -285,6 +297,12 @@
                 "description": "Idle Air Control System Malfunction - CRITICAL",
                 "severity": "critical",
                 "timestamp": 1718000008000
+              },
+               {
+                "code": "P0135",
+                "description": "O2 Sensor Heater Circuit Malfunction Bank 1 Sensor 1",
+                "severity": "warning",
+                "timestamp": 1718000009000
               }
             ],
             "parameters": {
@@ -313,12 +331,12 @@
                 "value": 3800
               },
               "FuelLevel": {
-                "isValid": true, 
+                "isValid": false, 
                 "lastUpdate": 1718000004000,
                 "max": 100,
                 "min": 10,
                 "unit": "%",
-                "value": 15 
+                "value": 5 
               },
               "OilLevel": {
                 "isValid": true,
@@ -347,7 +365,7 @@
             },
             "protocol": "CAN_29BIT",
             "systemStatus": "Critical",
-            "timestamp": 1718000008000
+            "timestamp": 1718000009000
           },
           "profile": {
             "addedAt": "2025-05-20T10:00:00.000Z",

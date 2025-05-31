@@ -126,7 +126,7 @@ export const sendMotorcycleAlertNotification = functions.database
           }
         }
       }
-    } else if (!alertToSend && !afterData.dtcs) { // Added check for !afterData.dtcs
+    } else if (!alertToSend && !afterData.dtcs) { 
       functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert and no DTCs in afterData to check for warning alerts.`);
     }
 
@@ -140,6 +140,7 @@ export const sendMotorcycleAlertNotification = functions.database
           const paramBefore = beforeData?.parameters?.[paramName];
           functions.logger.info(`[sendMotorcycleAlertNotification] Invalid Parameter ${paramName} found. Before state isValid: ${paramBefore?.isValid}`);
           if (!paramBefore || paramBefore.isValid === true) {
+            functions.logger.info(`[sendMotorcycleAlertNotification] CONDITION MET: Parameter ${paramName} is newly invalid. Before: ${paramBefore?.isValid}, After: ${paramAfter.isValid}`);
             alertToSend = {
               type: 'parameter',
               title: "🔧 Motorcycle Parameter Alert",
@@ -153,12 +154,11 @@ export const sendMotorcycleAlertNotification = functions.database
           }
         }
       }
-    } else if (!alertToSend && !afterData.parameters) { // Added check for !afterData.parameters
+    } else if (!alertToSend && !afterData.parameters) { 
        functions.logger.info(`[sendMotorcycleAlertNotification] No DTC alert and no parameters in afterData to check.`);
     }
     
     // 4. Handle initial data creation (if beforeData did not exist)
-    // This block should only run if beforeData did not exist AND no alert has been set by the diffing logic yet.
     if (!change.before.exists() && !alertToSend) {
         functions.logger.info("[sendMotorcycleAlertNotification] This is an initial data write (beforeData does not exist). Checking for alerts in new data.");
         if (afterData.dtcs) {
@@ -174,27 +174,26 @@ export const sendMotorcycleAlertNotification = functions.database
                 }
             }
         }
-        if (!alertToSend && afterData.parameters) { // Note: '!alertToSend' ensures we don't overwrite a DTC alert
+        if (!alertToSend && afterData.parameters) { 
             for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
                  functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write - Evaluating Parameter: ${paramName}, IsValid: ${paramAfter.isValid}, Value: ${paramAfter.value}`);
                 if (paramAfter.isValid === false) {
+                    functions.logger.info(`[sendMotorcycleAlertNotification] INITIAL WRITE: Parameter ${paramName} is invalid. Value: ${paramAfter.value}`);
                     alertToSend = { type: 'parameter', title: "🔧 Motorcycle Parameter Alert", body: `Parameter "${paramName}" is reporting an issue (value: ${paramAfter.value} ${paramAfter.unit || ''}).`, paramName: paramName };
                      functions.logger.info(`[sendMotorcycleAlertNotification] Identified invalid parameter on creation: ${paramName}. AlertToSend SET.`);
-                    break; // Take the first invalid parameter
+                    break; 
                 }
             }
         }
         if (!alertToSend) {
              functions.logger.info("[sendMotorcycleAlertNotification] Initial data write, but no critical/warning DTCs or invalid parameters found in new data.");
         }
-    } else if (change.before.exists() && !alertToSend) { // Modified condition for clarity
-        // This means beforeData existed AND no diff-based alert was found.
+    } else if (change.before.exists() && !alertToSend) { 
         functions.logger.info("[sendMotorcycleAlertNotification] beforeData existed, and no new/escalated alerts found through diffing.");
     }
 
 
     if (!alertToSend) {
-      // This log means none of the conditions above were met.
       functions.logger.info("[sendMotorcycleAlertNotification] Final check: No alertToSend. No new critical/warning DTCs or parameter issues identified. No notification will be sent.");
       return null;
     }
@@ -398,3 +397,4 @@ export const sendMotorcycleAlertNotification = functions.database
     return null; 
   });
 
+    
