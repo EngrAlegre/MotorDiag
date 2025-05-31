@@ -14,11 +14,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Settings, LayoutDashboard, DownloadCloud } from 'lucide-react';
+import { usePWAInstallPrompt } from '@/hooks/usePWAInstallPrompt';
 
 
 export function Header() {
   const { currentUser, logout, loading } = useAuth();
+  const { canInstall, handleInstall } = usePWAInstallPrompt();
 
   const getInitials = (email?: string | null, displayName?: string | null) => {
     if (displayName) {
@@ -40,8 +42,19 @@ export function Header() {
           {/* Dashboard link removed from here */}
         </nav>
 
-        <div className="flex items-center space-x-4">
-          {loading && !currentUser ? ( // Show loading skeleton only during initial auth check
+        <div className="flex items-center space-x-2 md:space-x-4">
+          {canInstall && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleInstall}
+              className="hidden md:inline-flex" // Show on medium screens and up
+            >
+              <DownloadCloud className="mr-2 h-4 w-4" />
+              Install App
+            </Button>
+          )}
+          {loading && !currentUser ? ( 
             <div className="h-10 w-28 animate-pulse bg-muted rounded-md" />
           ) : currentUser ? (
             <DropdownMenu>
@@ -65,6 +78,12 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                 {canInstall && (
+                  <DropdownMenuItem onClick={handleInstall} className="md:hidden"> {/* Show in menu on small screens */}
+                    <DownloadCloud className="mr-2 h-4 w-4" />
+                    <span>Install App</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link href="/profile">
                     <User className="mr-2 h-4 w-4" />
