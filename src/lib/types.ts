@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore'; // Keep for reference, though RTDB uses numbers
 
 export enum DiagnosticStatus {
@@ -119,4 +120,19 @@ export interface AIDiagnosticDataPoint {
   fuelLevel: number;
   vehicleSpeed: number;
   throttlePosition: number;
+}
+
+// Structure for in-app notifications stored in Firebase
+export interface AppNotification {
+  id: string; // Unique ID for the notification (usually the Firebase key)
+  motorcycleId: string;
+  motorcycleName: string; // e.g., "Yamaha R1"
+  title: string; // Short title, e.g., "🚨 Critical Alert!"
+  body: string; // Detailed message, e.g., "DTC: P0101 - MAF Sensor Issue."
+  type: 'critical' | 'warning' | 'info'; // Type of alert
+  timestamp: number; // Firebase Server Timestamp or client-generated
+  read: boolean; // Read status
+  code?: string; // Relevant DTC code or parameter name
+  severity?: string; // Severity of the DTC or parameter status
+  link?: string; // Optional deeplink, e.g., /dashboard/motorcycleId
 }

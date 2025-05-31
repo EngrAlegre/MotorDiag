@@ -58,7 +58,6 @@ export const sendMotorcycleAlertNotification = functions.database
       `[sendMotorcycleAlertNotification] Triggered for user: ${userId}, motorcycle: ${motorcycleId}`
     );
 
-    // Log Admin SDK Project ID
     try {
       const appInstance = admin.app();
       const projectId = appInstance.options.projectId;
@@ -105,7 +104,6 @@ export const sendMotorcycleAlertNotification = functions.database
       for (const dtcAfter of afterData.dtcs) {
         if (dtcAfter.severity === "warning") {
           const dtcBefore = findDtc(beforeData?.dtcs, dtcAfter.code);
-          // Send if new, or escalated from non-warning, but not if it was demoted from critical
           if (!dtcBefore || (dtcBefore.severity !== "warning" && dtcBefore.severity !== "critical")) {
              alertToSend = {
               type: 'warningDtc',
@@ -139,8 +137,7 @@ export const sendMotorcycleAlertNotification = functions.database
       }
     }
     
-    // Handling for initial creation if beforeData is null (first write)
-    if (!beforeData && !alertToSend) { // If it's a creation and no specific alert was caught by change detection logic
+    if (!beforeData && !alertToSend) {
         if (afterData.dtcs) {
             const criticalDtc = afterData.dtcs.find(d => d.severity === 'critical');
             if (criticalDtc) {
@@ -165,7 +162,6 @@ export const sendMotorcycleAlertNotification = functions.database
         }
     }
 
-
     if (!alertToSend) {
       functions.logger.info("[sendMotorcycleAlertNotification] No new critical/warning DTCs or parameter issues identified. No notification sent.");
       return null;
@@ -175,8 +171,7 @@ export const sendMotorcycleAlertNotification = functions.database
       `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}. Checking user notification preference for user: ${userId}`
     );
 
-    // Check user's app-level notification preference
-    let userAppNotificationsEnabled = true; // Default to true if preference not found or error
+    let userAppNotificationsEnabled = true; 
     try {
       const prefSnapshot = await admin.database().ref(`/users/${userId}/userPreferences/notificationsEnabled`).get();
       if (prefSnapshot.exists() && prefSnapshot.val() === false) {
@@ -187,70 +182,22 @@ export const sendMotorcycleAlertNotification = functions.database
         `[sendMotorcycleAlertNotification] Error fetching app-level notification preference for user ${userId}:`,
         prefError
       );
-      // Proceed with default true if preference fetch fails, to not block critical alerts due to this error.
     }
 
-    if (!userAppNotificationsEnabled) {
-      functions.logger.info(
-        `[sendMotorcycleAlertNotification] User ${userId} has disabled notifications at the app level. No notification sent.`
-      );
-      return null; // Do not proceed to send
-    }
-
-
-    functions.logger.info(
-      `[sendMotorcycleAlertNotification] User has app notifications enabled. Proceeding to fetch FCM tokens for user: ${userId}`
-    );
-
-
-    let tokensSnapshot;
-    try {
-      tokensSnapshot = await admin
-        .database()
-        .ref(`/users/${userId}/fcmTokens`)
-        .get();
-    } catch (dbError) {
-      functions.logger.error(
-        `[sendMotorcycleAlertNotification] Error fetching FCM tokens node for user ${userId}:`,
-        dbError
-      );
-      return null;
-    }
-
-    if (!tokensSnapshot.exists()) {
-      functions.logger.warn(
-        `[sendMotorcycleAlertNotification] No FCM tokens node found for user: ${userId}. Cannot send notification.`
-      );
-      return null;
-    }
-
-    const tokensMap = tokensSnapshot.val() as { [token: string]: any };
-    const validTokens = Object.keys(tokensMap).filter(
-      (token) => tokensMap[token] 
-    );
-
-    if (validTokens.length === 0) {
-      functions.logger.warn(
-        `[sendMotorcycleAlertNotification] No valid FCM tokens available for user: ${userId}. Cannot send notification.`
-      );
-      return null;
-    }
-
-    
     let motorcycleDisplayName = `Motorcycle (VIN: ${motorcycleId})`;
     try {
-      // Try to get profile from the 'afterData' if it includes it, otherwise fetch
-      const profile = afterData.profile || (await admin
+      const profileSnapshot = await admin
         .database()
-        .ref(`/users/${userId}/motorcycles/${motorcycleId}/profile`)
-        .get()).val() as MotorcycleProfile | null;
+        .ref(`/users/${userId}/motorcycles/${motorcycleId}/profile`) // Fetch full profile
+        .get();
+      const profile = profileSnapshot.val() as MotorcycleProfile | null;
 
       if (profile) {
         const make = profile.make || "";
         const model = profile.model || "";
         const vin = profile.vin || motorcycleId; 
 
-        if (profile.name) { // Prefer user-set name if available
+        if (profile.name) { 
             motorcycleDisplayName = `${profile.name} (VIN: ${vin})`;
         } else if (make || model) {
            motorcycleDisplayName = `${make} ${model} (VIN: ${vin})`.trim();
@@ -269,28 +216,98 @@ export const sendMotorcycleAlertNotification = functions.database
     }
 
     const finalAlertBody = `${alertToSend.body.startsWith('DTC:') || alertToSend.body.startsWith('Parameter') ? '' : 'Your ' + motorcycleDisplayName + ' reports: '}${alertToSend.body}`;
+    const appNotificationType = alertToSend.type === 'criticalDtc' ? 'critical' : (alertToSend.type === 'warningDtc' ? 'warning' : 'info');
 
-    const payload = {
+
+    // Create and store In-App Notification
+    const appNotificationsRef = admin.database().ref(`/users/${userId}/appNotifications`);
+    const newAppNotificationRef = appNotificationsRef.push();
+    const appNotificationPayload = {
+      id: newAppNotificationRef.key,
+      motorcycleId: motorcycleId,
+      motorcycleName: motorcycleDisplayName,
+      title: alertToSend.title,
+      body: finalAlertBody,
+      type: appNotificationType,
+      timestamp: admin.database.ServerValue.TIMESTAMP,
+      read: false,
+      code: alertToSend.dtc?.code || alertToSend.paramName || '',
+      severity: alertToSend.dtc?.severity || (alertToSend.type === 'parameter' ? 'warning' : ''),
+      link: `/dashboard/${motorcycleId}`,
+    };
+
+    try {
+      await newAppNotificationRef.set(appNotificationPayload);
+      functions.logger.info(`[sendMotorcycleAlertNotification] In-app notification stored for user ${userId}: ${newAppNotificationRef.key}`);
+    } catch (dbError) {
+      functions.logger.error(`[sendMotorcycleAlertNotification] Failed to store in-app notification for user ${userId}:`, dbError);
+    }
+
+
+    if (!userAppNotificationsEnabled) {
+      functions.logger.info(
+        `[sendMotorcycleAlertNotification] User ${userId} has disabled FCM notifications at the app level. No FCM notification sent. In-app notification was still stored.`
+      );
+      return null; 
+    }
+
+    functions.logger.info(
+      `[sendMotorcycleAlertNotification] User has app notifications enabled. Proceeding to fetch FCM tokens for user: ${userId}`
+    );
+
+    let tokensSnapshot;
+    try {
+      tokensSnapshot = await admin
+        .database()
+        .ref(`/users/${userId}/fcmTokens`)
+        .get();
+    } catch (dbError) {
+      functions.logger.error(
+        `[sendMotorcycleAlertNotification] Error fetching FCM tokens node for user ${userId}:`,
+        dbError
+      );
+      return null;
+    }
+
+    if (!tokensSnapshot.exists()) {
+      functions.logger.warn(
+        `[sendMotorcycleAlertNotification] No FCM tokens node found for user: ${userId}. Cannot send FCM notification.`
+      );
+      return null;
+    }
+
+    const tokensMap = tokensSnapshot.val() as { [token: string]: any };
+    const validTokens = Object.keys(tokensMap).filter(
+      (token) => tokensMap[token] 
+    );
+
+    if (validTokens.length === 0) {
+      functions.logger.warn(
+        `[sendMotorcycleAlertNotification] No valid FCM tokens available for user: ${userId}. Cannot send FCM notification.`
+      );
+      return null;
+    }
+
+    const fcmPayload = {
       notification: {
         title: `${alertToSend.title} (${motorcycleDisplayName})`,
         body: finalAlertBody,
-        // icon: "/icons/icon-192x192.png", // Removed for troubleshooting
       },
       data: {
         motorcycleId: motorcycleId,
-        alertType: alertToSend.type,
+        alertType: appNotificationType,
         code: alertToSend.dtc?.code || alertToSend.paramName || '',
-        severity: alertToSend.dtc?.severity || (alertToSend.type === 'parameter' ? 'warning' : ''), // Default param alert to warning
+        severity: alertToSend.dtc?.severity || (alertToSend.type === 'parameter' ? 'warning' : ''), 
         click_action: `/dashboard/${motorcycleId}`, 
       },
     };
 
     functions.logger.info(
-      `[sendMotorcycleAlertNotification] Preparing to send notification for user ${userId}, motorcycle ${motorcycleId} to ${validTokens.length} token(s). Payload: ${JSON.stringify(payload)}`
+      `[sendMotorcycleAlertNotification] Preparing to send FCM notification for user ${userId}, motorcycle ${motorcycleId} to ${validTokens.length} token(s). Payload: ${JSON.stringify(fcmPayload)}`
     );
 
     try {
-      const response = await admin.messaging().sendToDevice(validTokens, payload);
+      const response = await admin.messaging().sendToDevice(validTokens, fcmPayload);
       functions.logger.info(
         `[sendMotorcycleAlertNotification] FCM sendToDevice response for user ${userId}: Success count: ${response.successCount}, Failure count: ${response.failureCount}`
       );
@@ -300,14 +317,14 @@ export const sendMotorcycleAlertNotification = functions.database
           const error = result.error;
           if (error) {
             functions.logger.error(
-              `[sendMotorcycleAlertNotification] Failure sending to token ${validTokens[index]} for user ${userId}: Code: ${error.code}, Message: ${error.message}`
+              `[sendMotorcycleAlertNotification] Failure sending FCM to token ${validTokens[index]} for user ${userId}: Code: ${error.code}, Message: ${error.message}`
             );
             if (
               error.code === "messaging/invalid-registration-token" ||
               error.code === "messaging/registration-token-not-registered"
             ) {
               functions.logger.info(
-                `[sendMotorcycleAlertNotification] Removing invalid/unregistered token: ${validTokens[index]} for user ${userId}`
+                `[sendMotorcycleAlertNotification] Removing invalid/unregistered FCM token: ${validTokens[index]} for user ${userId}`
               );
               admin
                 .database()
@@ -315,29 +332,29 @@ export const sendMotorcycleAlertNotification = functions.database
                 .remove()
                 .then(() => {
                   functions.logger.info(
-                    `[sendMotorcycleAlertNotification] Successfully removed token: ${validTokens[index]}`
+                    `[sendMotorcycleAlertNotification] Successfully removed FCM token: ${validTokens[index]}`
                   );
                 })
                 .catch((removeError) => {
                   functions.logger.error(
-                    `[sendMotorcycleAlertNotification] Error removing token ${validTokens[index]}:`,
+                    `[sendMotorcycleAlertNotification] Error removing FCM token ${validTokens[index]}:`,
                     removeError
                   );
                 });
             }
           } else if (result.messageId) {
-             functions.logger.info(`[sendMotorcycleAlertNotification] Successfully sent to token ${validTokens[index]} with message ID: ${result.messageId}`);
+             functions.logger.info(`[sendMotorcycleAlertNotification] Successfully sent FCM to token ${validTokens[index]} with message ID: ${result.messageId}`);
           }
         });
       }
     } catch (error) {
       const genericError = error as Error & {errorInfo?: any, codePrefix?: string};
       functions.logger.error(
-        `[sendMotorcycleAlertNotification] Critical error during sendToDevice call for user ${userId}:`,
+        `[sendMotorcycleAlertNotification] Critical error during FCM sendToDevice call for user ${userId}:`,
         genericError.message || genericError, genericError
       );
       if (genericError && genericError.errorInfo) {
-         functions.logger.error(`[sendMotorcycleAlertNotification] Detailed errorInfo: ${JSON.stringify(genericError.errorInfo)}`);
+         functions.logger.error(`[sendMotorcycleAlertNotification] Detailed FCM errorInfo: ${JSON.stringify(genericError.errorInfo)}`);
       }
        if (genericError && genericError.codePrefix === 'messaging' && genericError.errorInfo?.code === 'messaging/unknown-error' && genericError.message?.includes("404")) {
         functions.logger.error("[sendMotorcycleAlertNotification] DETECTED FCM 404 ERROR. This usually indicates an issue with the Firebase Cloud Messaging API not being enabled or a billing problem on the Firebase project. Please verify these in the Google Cloud Console for your project.");
@@ -345,3 +362,4 @@ export const sendMotorcycleAlertNotification = functions.database
     }
     return null; 
   });
+

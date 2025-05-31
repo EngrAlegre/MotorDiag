@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MotoVisionLogo } from '@/components/MotoVisionLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // AvatarImage removed as not used
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,22 +15,27 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, Settings, LayoutDashboard, DownloadCloud, Bell, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, LogOut, Settings, LayoutDashboard, DownloadCloud, Bell, AlertCircle, CheckCircle, Info, Loader2, Trash2 } from 'lucide-react';
 import { usePWAInstallPrompt } from '@/hooks/usePWAInstallPrompt';
-import { Badge } from '@/components/ui/badge'; // Import Badge for notification count
-import React from 'react'; // Import React for useState and useEffect
-
-// Mock notifications for now
-const mockNotifications = [
-  { id: '1', title: 'Critical: Engine Overheat', description: 'Motorcycle Yamaha R1 VIN: YAMAHA001 reports critical engine temperature.', type: 'critical', read: false, timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-  { id: '2', title: 'Warning: Low Oil Pressure', description: 'Motorcycle Honda CB500 VIN: HONDA002 needs oil check.', type: 'warning', read: true, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-  { id: '3', title: 'Info: Maintenance Due', description: 'Scheduled maintenance for Kawasaki Ninja VIN: KAWASAKI003 is approaching.', type: 'info', read: true, timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-];
+import { Badge } from '@/components/ui/badge';
+import React from 'react';
+import { useAppNotifications } from '@/hooks/useAppNotifications'; // Import the new hook
+import type { AppNotification } from '@/lib/types';
+import { useRouter } from 'next/navigation'; // For navigation
 
 export function Header() {
-  const { currentUser, logout, loading } = useAuth();
+  const { currentUser, logout, loading: authLoading } = useAuth();
   const { canInstall, handleInstall } = usePWAInstallPrompt();
-  const [notifications, setNotifications] = React.useState(mockNotifications); // Use mock notifications for now
+  const router = useRouter();
+
+  // Use the real notifications hook
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+  } = useAppNotifications();
 
   const getInitials = (email?: string | null, displayName?: string | null) => {
     if (displayName) {
@@ -40,10 +45,9 @@ export function Header() {
     return email.substring(0, 2).toUpperCase();
   };
 
-  const unreadNotificationCount = notifications.filter(n => !n.read).length;
-
-  const formatTimeAgo = (isoString: string) => {
-    const date = new Date(isoString);
+  const formatTimeAgo = (timestamp: number) => {
+    if (!timestamp) return 'Just now';
+    const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSeconds = Math.round(diffMs / 1000);
@@ -57,10 +61,20 @@ export function Header() {
     return `${diffDays}d ago`;
   };
 
-  const handleNotificationClick = (notificationId: string) => {
-    // Placeholder for marking notification as read or navigating
-    console.log("Notification clicked:", notificationId);
-    setNotifications(prev => prev.map(n => n.id === notificationId ? {...n, read: true} : n));
+  const handleNotificationClick = (notification: AppNotification) => {
+    markNotificationAsRead(notification.id);
+    if (notification.link) {
+      router.push(notification.link);
+    }
+  };
+
+  const getNotificationIcon = (type: AppNotification['type']) => {
+    switch (type) {
+      case 'critical': return <AlertCircle className="h-4 w-4 mr-2 text-destructive" />;
+      case 'warning': return <AlertCircle className="h-4 w-4 mr-2 text-yellow-500" />;
+      case 'info': return <Info className="h-4 w-4 mr-2 text-blue-500" />;
+      default: return <Bell className="h-4 w-4 mr-2 text-muted-foreground" />;
+    }
   };
 
   return (
@@ -72,7 +86,7 @@ export function Header() {
         </Link>
         
         <nav className="flex flex-1 items-center space-x-4 lg:space-x-6">
-          {/* Dashboard link removed from here */}
+          {/* Navigation items can go here if needed */}
         </nav>
 
         <div className="flex items-center space-x-2 md:space-x-4">
@@ -81,14 +95,14 @@ export function Header() {
               variant="outline"
               size="sm"
               onClick={handleInstall}
-              className="hidden md:inline-flex" // Show on medium screens and up
+              className="hidden md:inline-flex"
             >
               <DownloadCloud className="mr-2 h-4 w-4" />
               Install App
             </Button>
           )}
 
-          {loading && !currentUser ? ( 
+          {authLoading && !currentUser ? ( 
             <div className="h-10 w-40 animate-pulse bg-muted rounded-md flex items-center space-x-2">
               <div className="h-8 w-8 rounded-full bg-muted-foreground/20 ml-2"></div>
               <div className="h-8 w-8 rounded-full bg-muted-foreground/20"></div>
@@ -99,12 +113,12 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                     <Bell className="h-5 w-5" />
-                    {unreadNotificationCount > 0 && (
+                    {unreadCount > 0 && (
                       <Badge
                         variant="destructive"
                         className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full"
                       >
-                        {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                        {unreadCount > 9 ? '9+' : unreadCount}
                       </Badge>
                     )}
                     <span className="sr-only">Open notifications</span>
@@ -113,12 +127,16 @@ export function Header() {
                 <DropdownMenuContent className="w-80 md:w-96" align="end">
                   <DropdownMenuLabel className="flex justify-between items-center">
                     <span>Notifications</span>
-                    {notifications.length > 0 && (
-                       <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setNotifications(prev => prev.map(n => ({...n, read: true})))}>Mark all as read</Button>
+                    {notifications.length > 0 && unreadCount > 0 && (
+                       <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={(e) => { e.stopPropagation(); markAllNotificationsAsRead(); }}>Mark all as read</Button>
                     )}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {notifications.length === 0 ? (
+                  {notificationsLoading ? (
+                     <DropdownMenuItem disabled className="flex justify-center items-center py-4">
+                       <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading...
+                     </DropdownMenuItem>
+                  ) : notifications.length === 0 ? (
                     <DropdownMenuItem disabled className="text-center text-muted-foreground py-4">
                       No new notifications
                     </DropdownMenuItem>
@@ -128,22 +146,22 @@ export function Header() {
                         <DropdownMenuItem
                           key={notification.id}
                           className={`flex flex-col items-start gap-1.5 p-3 cursor-pointer ${!notification.read ? 'bg-accent/50 dark:bg-accent/20' : ''}`}
-                          onClick={() => handleNotificationClick(notification.id)}
+                          onClick={() => handleNotificationClick(notification)}
+                          // Prevent dropdown from closing if specific actions are taken, useful for future action buttons inside notification
+                          // onSelect={(e) => e.preventDefault()} 
                         >
                           <div className="flex items-center w-full">
-                            {notification.type === 'critical' && <AlertCircle className="h-4 w-4 mr-2 text-destructive" />}
-                            {notification.type === 'warning' && <AlertCircle className="h-4 w-4 mr-2 text-yellow-500" />}
-                            {notification.type === 'info' && <CheckCircle className="h-4 w-4 mr-2 text-blue-500" />}
+                            {getNotificationIcon(notification.type)}
                             <span className={`font-semibold text-sm ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>{notification.title}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground pl-6 truncate w-full">{notification.description}</p>
+                          <p className="text-xs text-muted-foreground pl-6 truncate w-full" title={notification.body}>{notification.body}</p>
                           <p className="text-xs text-muted-foreground/70 pl-6 self-end">{formatTimeAgo(notification.timestamp)}</p>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuGroup>
                   )}
                    <DropdownMenuSeparator />
-                   <DropdownMenuItem className="justify-center py-2">
+                   <DropdownMenuItem className="justify-center py-2" onSelect={() => router.push('/notifications')}>
                      <Link href="/notifications" className="text-sm text-primary hover:underline">
                        View all notifications
                      </Link>
@@ -155,7 +173,6 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                     <Avatar className="h-9 w-9">
-                      {/* <AvatarImage src={currentUser.photoURL || undefined} alt={currentUser.displayName || currentUser.email || 'User'} /> */}
                       <AvatarFallback>{getInitials(currentUser.email, currentUser.displayName)}</AvatarFallback>
                     </Avatar>
                      <span className="sr-only">Open user menu</span>
@@ -174,7 +191,7 @@ export function Header() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {canInstall && (
-                    <DropdownMenuItem onClick={handleInstall} className="md:hidden"> {/* Show in menu on small screens */}
+                    <DropdownMenuItem onClick={handleInstall} className="md:hidden">
                       <DownloadCloud className="mr-2 h-4 w-4" />
                       <span>Install App</span>
                     </DropdownMenuItem>
@@ -220,5 +237,3 @@ export function Header() {
     </header>
   );
 }
-
-    
