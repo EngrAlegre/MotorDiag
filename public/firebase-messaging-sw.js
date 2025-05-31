@@ -1,76 +1,59 @@
 
-// Scripts for Firebase products will be imported here
-// Ensure you have the VAPID_KEY set correctly below.
-// This key is obtained from your Firebase project settings:
-// Project settings > Cloud Messaging > Web configuration (bottom) > Web Push certificates.
+// public/firebase-messaging-sw.js
+// Use latest v10 compat scripts
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
-self.FIREBASE_APP_ID_VAR = '1:375727641154:web:542ab93a8ae989ed8e93db'; // Your Firebase App ID
-
-// IMPORTANT: REPLACE WITH YOUR ACTUAL VAPID KEY
-const VAPID_KEY = "BAvhUFbdb7XCE-loO_Xn9XekWZ0wEaeIzgj-yy8RcqR458ZXuSVHBML8KPa9NBOuKEYqWialsc-xBlIaFc2tv3o";
-
-
-// Import and initialize the Firebase SDK
-// These are the "compat" libraries suitable for service workers using importScripts
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
-
+// IMPORTANT: This configuration MUST MATCH the one in your src/lib/firebase.ts
 const firebaseConfig = {
   apiKey: "AIzaSyCTMt2Ou_5y7eiw9-XoCCf28ZdRgBDjfvg",
   authDomain: "motor-42313.firebaseapp.com",
   projectId: "motor-42313",
   storageBucket: "motor-42313.firebasestorage.app",
-  messagingSenderId: "375727641154",
+  messagingSenderId: "375727641154", // This ID is crucial for FCM
   appId: "1:375727641154:web:542ab93a8ae989ed8e93db",
-  measurementId: "G-91V0B6C2MD",
+  measurementId: "G-91V0B6C2MD", // Included for consistency
   databaseURL: "https://motor-42313-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase App if it hasn't been initialized yet
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+} else {
+  firebase.app(); // Use the already initialized app
+}
 
-// Retrieve an instance of Firebase Messaging so that it can handle background
-// messages.
 const messaging = firebase.messaging();
 
+// Optional: Background message handler
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[firebase-messaging-sw.js] Received background message: ', payload);
 
-  const notificationTitle = payload.notification?.title || 'New Message';
-  const notificationOptions = {
-    body: payload.notification?.body || 'You have a new message.',
-    icon: payload.notification?.icon || '/icons/icon-192x192.png', // Default icon
-    data: payload.data // Pass along any data for click actions
+  let notificationTitle = 'New Message';
+  let notificationOptions = {
+    body: 'You have a new notification.',
+    icon: '/icons/icon-192x192.png', // Default icon
+    // Optionally add data for click_action if your backend sends it
+    // data: { click_action: payload.data?.click_action || '/' } 
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification.data);
-
-  const clickAction = event.notification.data?.click_action || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
-        // Check if the client is already open and focused
-        if (client.url === self.location.origin + clickAction && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // If not, open a new window
-      if (clients.openWindow) {
-        return clients.openWindow(clickAction);
-      }
-    })
-  );
-});
-
-// Optional: console log to confirm SW is active (for debugging)
-self.addEventListener('activate', (event) => {
-  console.log('[firebase-messaging-sw.js] Service worker activated.');
-  // If using clients.claim() it's good practice but ensure you understand its implications
-  // event.waitUntil(self.clients.claim());
+  if (payload.notification) {
+    notificationTitle = payload.notification.title || notificationTitle;
+    notificationOptions.body = payload.notification.body || notificationOptions.body;
+    notificationOptions.icon = payload.notification.icon || notificationOptions.icon;
+  } else if (payload.data) { // If no 'notification' payload, try to use 'data' from data message
+    notificationTitle = payload.data.title || notificationTitle;
+    notificationOptions.body = payload.data.body || notificationOptions.body;
+    notificationOptions.icon = payload.data.icon || notificationOptions.icon;
+    // if (payload.data.click_action) {
+    //   notificationOptions.data = { click_action: payload.data.click_action };
+    // }
+  }
+  
+  // Ensure self.registration is available and showNotification is a function
+  if (self.registration && typeof self.registration.showNotification === 'function') {
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  } else {
+    console.error('[firebase-messaging-sw.js] self.registration.showNotification is not available or not a function.');
+  }
 });

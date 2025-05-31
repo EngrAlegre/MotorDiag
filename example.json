@@ -2,35 +2,103 @@
 {
   "users": {
     "bHi1FkvPBQQn9YsGjFgkzJqoRLJ2": {
+      "fcmTokens": {
+        "eKwESfB888xX0XsQl47OY6:APA91bEYg8gt9xMoLQ_3_k0raBQwVe4mCm88xnkJSCzUTB5NqJIpBdGk7S2c4txkIZYvjqgpV_p3378TV0KBaBL9bcjqP5tzPJJA4TsFkEqwoCGRTbVcBoI": true
+      },
       "motorcycles": {
         "01234567899": {
+          "latest": {
+            "dataValid": true,
+            "dtcs": [
+              {
+                "code": "P0562",
+                "description": "System Voltage Low",
+                "severity": "critical",
+                "timestamp": 1718000002000
+              },
+              {
+                "code": "P0563",
+                "description": "System Voltage High",
+                "severity": "critical",
+                "timestamp": 1718000002000
+              },
+              {
+                "code": "U0100",
+                "description": "Lost Communication With ECM/PCM",
+                "severity": "warning",
+                "timestamp": 1718000002500
+              }
+            ],
+            "parameters": {
+              "BatteryVoltage": {
+                "isValid": false,
+                "lastUpdate": 1718000002000,
+                "max": 14.8,
+                "min": 11.8,
+                "unit": "V",
+                "value": 10.2
+              },
+              "CoolantTemperature": {
+                "isValid": true,
+                "lastUpdate": 1718000002000,
+                "max": 105,
+                "min": 60,
+                "unit": "°C",
+                "value": 75
+              },
+              "EngineRPM": {
+                "isValid": true,
+                "lastUpdate": 1718000002000,
+                "max": 12000,
+                "min": 0,
+                "unit": "RPM",
+                "value": 0
+              },
+              "FuelLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000002000,
+                "max": 100,
+                "min": 10,
+                "unit": "%",
+                "value": 40
+              },
+              "OilLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000002000,
+                "max": 100,
+                "min": 20,
+                "unit": "%",
+                "value": 70
+              },
+              "ThrottlePosition": {
+                "isValid": true,
+                "lastUpdate": 1718000002000,
+                "max": 100,
+                "min": 0,
+                "unit": "%",
+                "value": 0
+              },
+              "VehicleSpeed": {
+                "isValid": true,
+                "lastUpdate": 1718000002000,
+                "max": 250,
+                "min": 0,
+                "unit": "km/h",
+                "value": 0
+              }
+            },
+            "protocol": "CAN_11BIT",
+            "systemStatus": "Critical",
+            "timestamp": 1718000002000
+          },
           "profile": {
+            "addedAt": "2025-05-30T18:45:31.905Z",
             "make": "Yamaha",
             "model": "Sniper",
             "vin": "01234567899",
-            "year": "2015",
-            "wifiSSID": "HAHAHA 2.4G",
             "wifiPassword": "PLDTWIFI99xwhm",
-            "addedAt": "2025-05-30T18:45:31.905Z"
-          },
-          "latest": {
-            "timestamp": 1718000002000,
-            "protocol": "CAN_11BIT",
-            "dataValid": true,
-            "systemStatus": "Critical",
-            "parameters": {
-              "BatteryVoltage": { "value": 10.2, "unit": "V", "min": 11.8, "max": 14.8, "isValid": false, "lastUpdate": 1718000002000 },
-              "EngineRPM": { "value": 0, "unit": "RPM", "min": 0, "max": 12000, "isValid": true, "lastUpdate": 1718000002000 },
-              "CoolantTemperature": { "value": 75, "unit": "°C", "min": 60, "max": 105, "isValid": true, "lastUpdate": 1718000002000 },
-              "OilLevel": { "value": 70, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000002000 },
-              "FuelLevel": { "value": 40, "unit": "%", "min": 10, "max": 100, "isValid": true, "lastUpdate": 1718000002000 },
-              "VehicleSpeed": { "value": 0, "unit": "km/h", "min": 0, "max": 250, "isValid": true, "lastUpdate": 1718000002000 },
-              "ThrottlePosition": { "value": 0, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000002000 }
-            },
-            "dtcs": [
-              { "code": "P0562", "description": "System Voltage Low", "severity": "critical", "timestamp": 1718000002000 },
-              { "code": "P0563", "description": "System Voltage High", "severity": "critical", "timestamp": 1718000002000 }
-            ]
+            "wifiSSID": "HAHAHA 2.4G",
+            "year": "2015"
           }
         }
       }
@@ -38,30 +106,182 @@
     "fTNbzyxHm6SlyDtWubvzbTEShzY2": {
       "motorcycles": {
         "012345678910": {
+          "latest": {
+            "dataValid": true,
+            "dtcs": [
+              {
+                "code": "P0115",
+                "description": "Engine Coolant Temp Circuit Malfunction",
+                "severity": "warning",
+                "timestamp": 1718000003000
+              }
+            ],
+            "parameters": {
+              "BatteryVoltage": {
+                "isValid": true,
+                "lastUpdate": 1718000003000,
+                "max": 14.8,
+                "min": 11.8,
+                "unit": "V",
+                "value": 12.5
+              },
+              "CoolantTemperature": {
+                "isValid": false,
+                "lastUpdate": 1718000003000,
+                "max": 100,
+                "min": 60,
+                "unit": "°C",
+                "value": 95
+              },
+              "EngineRPM": {
+                "isValid": true,
+                "lastUpdate": 1718000003000,
+                "max": 9000,
+                "min": 0,
+                "unit": "RPM",
+                "value": 4500
+              },
+              "FuelLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000003000,
+                "max": 100,
+                "min": 10,
+                "unit": "%",
+                "value": 35
+              },
+              "OilLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000003000,
+                "max": 100,
+                "min": 20,
+                "unit": "%",
+                "value": 65
+              },
+              "ThrottlePosition": {
+                "isValid": true,
+                "lastUpdate": 1718000003000,
+                "max": 100,
+                "min": 0,
+                "unit": "%",
+                "value": 50
+              },
+              "VehicleSpeed": {
+                "isValid": true,
+                "lastUpdate": 1718000003000,
+                "max": 180,
+                "min": 0,
+                "unit": "km/h",
+                "value": 45
+              }
+            },
+            "protocol": "ISO_14230",
+            "systemStatus": "Warning",
+            "timestamp": 1718000003000
+          },
           "profile": {
+            "addedAt": "2025-05-23T08:04:45.156Z",
             "make": "Honda",
             "model": "TMX",
             "vin": "012345678910",
-            "year": "2014",
-            "addedAt": "2025-05-23T08:04:45.156Z"
-          },
+            "year": "2014"
+          }
+        }
+      }
+    },
+    "juG2kStQzOYbjghnPNlW4ECtjV73": {
+      "fcmTokens": {
+        "dAbp3nVX3CntnJ1u2oiPbw:APA91bEjvIqam8LpzvfH0DVLtiKpmdlHbwMGc1hrlaGPrmsAhs4arepqcgWczqX2rETuosxS63ednkoa88xn66h3Ub8c0ZIgcoh61KqFq1RBiy43KJY3kG4": true
+      },
+      "motorcycles": {
+        "KAWASAKI_ZX10R_007": {
           "latest": {
-            "timestamp": 1718000003000,
-            "protocol": "ISO_14230",
             "dataValid": true,
-            "systemStatus": "Warning",
-            "parameters": {
-              "BatteryVoltage": { "value": 12.5, "unit": "V", "min": 11.8, "max": 14.8, "isValid": true, "lastUpdate": 1718000003000 },
-              "EngineRPM": { "value": 4500, "unit": "RPM", "min": 0, "max": 9000, "isValid": true, "lastUpdate": 1718000003000 },
-              "CoolantTemperature": { "value": 95, "unit": "°C", "min": 60, "max": 100, "isValid": false, "lastUpdate": 1718000003000 },
-              "OilLevel": { "value": 65, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000003000 },
-              "FuelLevel": { "value": 35, "unit": "%", "min": 10, "max": 100, "isValid": true, "lastUpdate": 1718000003000 },
-              "VehicleSpeed": { "value": 45, "unit": "km/h", "min": 0, "max": 180, "isValid": true, "lastUpdate": 1718000003000 },
-              "ThrottlePosition": { "value": 50, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000003000 }
-            },
             "dtcs": [
-              { "code": "P0115", "description": "Engine Coolant Temp Circuit Malfunction", "severity": "warning", "timestamp": 1718000003000 }
-            ]
+              {
+                "code": "P0101",
+                "description": "Mass or Volume Air Flow Circuit Malfunction",
+                "severity": "critical",
+                "timestamp": 1718000005000
+              }
+            ],
+            "parameters": {
+              "BatteryVoltage": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 14.8,
+                "min": 11.8,
+                "unit": "V",
+                "value": 13.1
+              },
+              "CoolantTemperature": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 110,
+                "min": 60,
+                "unit": "°C",
+                "value": 88
+              },
+              "EngineRPM": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 14000,
+                "min": 0,
+                "unit": "RPM",
+                "value": 1250
+              },
+              "FuelLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 100,
+                "min": 10,
+                "unit": "%",
+                "value": 75
+              },
+              "LeanAngle": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 60,
+                "min": -60,
+                "unit": "deg",
+                "value": 0
+              },
+              "OilLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 100,
+                "min": 20,
+                "unit": "%",
+                "value": 85
+              },
+              "ThrottlePosition": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 100,
+                "min": 0,
+                "unit": "%",
+                "value": 0
+              },
+              "VehicleSpeed": {
+                "isValid": true,
+                "lastUpdate": 1718000005000,
+                "max": 300,
+                "min": 0,
+                "unit": "km/h",
+                "value": 0
+              }
+            },
+            "protocol": "CAN_11BIT",
+            "systemStatus": "Critical",
+            "timestamp": 1718000005000
+          },
+          "profile": {
+            "addedAt": "2025-06-01T10:15:00.000Z",
+            "make": "Kawasaki",
+            "model": "Ninja ZX-10R",
+            "vin": "KAWASAKI_ZX10R_007",
+            "wifiPassword": "SuperSecurePassword123!",
+            "wifiSSID": "MyHomeNet_5G",
+            "year": "2022"
           }
         }
       }
@@ -69,63 +289,81 @@
     "lE4PW4CYHVaTOLMPJUHHMWzCMcp2": {
       "motorcycles": {
         "yamaha_001": {
-          "profile": {
-             "make": "Yamaha",
-             "model": "FZ",
-             "vin": "yamaha_001",
-             "year": "2018",
-             "addedAt": "2025-05-20T10:00:00.000Z"
-          },
           "latest": {
-            "timestamp": 1718000004000,
+            "dataValid": true,
+            "parameters": {
+              "BatteryVoltage": {
+                "isValid": true,
+                "lastUpdate": 1718000004000,
+                "max": 14.8,
+                "min": 11.8,
+                "unit": "V",
+                "value": 12.6
+              },
+              "CoolantTemperature": {
+                "isValid": true,
+                "lastUpdate": 1718000004000,
+                "max": 105,
+                "min": 60,
+                "unit": "°C",
+                "value": 85
+              },
+              "EngineRPM": {
+                "isValid": true,
+                "lastUpdate": 1718000004000,
+                "max": 11000,
+                "min": 0,
+                "unit": "RPM",
+                "value": 3800
+              },
+              "FuelLevel": {
+                "isValid": false,
+                "lastUpdate": 1718000004000,
+                "max": 100,
+                "min": 10,
+                "unit": "%",
+                "value": 15
+              },
+              "OilLevel": {
+                "isValid": true,
+                "lastUpdate": 1718000004000,
+                "max": 100,
+                "min": 20,
+                "unit": "%",
+                "value": 60
+              },
+              "ThrottlePosition": {
+                "isValid": true,
+                "lastUpdate": 1718000004000,
+                "max": 100,
+                "min": 0,
+                "unit": "%",
+                "value": 40
+              },
+              "VehicleSpeed": {
+                "isValid": true,
+                "lastUpdate": 1718000004000,
+                "max": 220,
+                "min": 0,
+                "unit": "km/h",
+                "value": 30
+              }
+            },
             "protocol": "CAN_29BIT",
-            "dataValid": true,
             "systemStatus": "Warning",
-            "parameters": {
-              "BatteryVoltage": { "value": 12.6, "unit": "V", "min": 11.8, "max": 14.8, "isValid": true, "lastUpdate": 1718000004000 },
-              "EngineRPM": { "value": 3800, "unit": "RPM", "min": 0, "max": 11000, "isValid": true, "lastUpdate": 1718000004000 },
-              "CoolantTemperature": { "value": 85, "unit": "°C", "min": 60, "max": 105, "isValid": true, "lastUpdate": 1718000004000 },
-              "OilLevel": { "value": 60, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000004000 },
-              "FuelLevel": { "value": 15, "unit": "%", "min": 10, "max": 100, "isValid": false, "lastUpdate": 1718000004000 },
-              "VehicleSpeed": { "value": 30, "unit": "km/h", "min": 0, "max": 220, "isValid": true, "lastUpdate": 1718000004000 },
-              "ThrottlePosition": { "value": 40, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000004000 }
-            },
-            "dtcs": []
-          }
-        }
-      }
-    },
-    "juG2kStQzOYbjghnPNlW4ECtjV73": {
-      "motorcycles": {
-        "KAWASAKI_ZX10R_007": {
-          "profile": {
-            "make": "Kawasaki",
-            "model": "Ninja ZX-10R",
-            "vin": "KAWASAKI_ZX10R_007",
-            "year": "2022",
-            "wifiSSID": "MyHomeNet_5G",
-            "wifiPassword": "SuperSecurePassword123!",
-            "addedAt": "2025-06-01T10:15:00.000Z"
+            "timestamp": 1718000004000
           },
-          "latest": {
-            "timestamp": 1718000005000,
-            "protocol": "CAN_11BIT",
-            "dataValid": true,
-            "systemStatus": "Normal",
-            "parameters": {
-              "BatteryVoltage": { "value": 13.1, "unit": "V", "min": 11.8, "max": 14.8, "isValid": true, "lastUpdate": 1718000005000 },
-              "EngineRPM": { "value": 1250, "unit": "RPM", "min": 0, "max": 14000, "isValid": true, "lastUpdate": 1718000005000 },
-              "CoolantTemperature": { "value": 88, "unit": "°C", "min": 60, "max": 110, "isValid": true, "lastUpdate": 1718000005000 },
-              "OilLevel": { "value": 85, "unit": "%", "min": 20, "max": 100, "isValid": true, "lastUpdate": 1718000005000 },
-              "FuelLevel": { "value": 75, "unit": "%", "min": 10, "max": 100, "isValid": true, "lastUpdate": 1718000005000 },
-              "VehicleSpeed": { "value": 0, "unit": "km/h", "min": 0, "max": 300, "isValid": true, "lastUpdate": 1718000005000 },
-              "ThrottlePosition": { "value": 0, "unit": "%", "min": 0, "max": 100, "isValid": true, "lastUpdate": 1718000005000 },
-              "LeanAngle": { "value": 0, "unit": "deg", "min": -60, "max": 60, "isValid": true, "lastUpdate": 1718000005000 }
-            },
-            "dtcs": []
+          "profile": {
+            "addedAt": "2025-05-20T10:00:00.000Z",
+            "make": "Yamaha",
+            "model": "FZ",
+            "vin": "yamaha_001",
+            "year": "2018"
           }
         }
       }
     }
   }
 }
+
+    
