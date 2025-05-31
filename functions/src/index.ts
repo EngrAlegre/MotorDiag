@@ -274,7 +274,7 @@ export const sendMotorcycleAlertNotification = functions.database
       notification: {
         title: `${alertToSend.title} (${motorcycleDisplayName})`,
         body: finalAlertBody,
-        icon: "/icons/icon-192x192.png", 
+        // icon: "/icons/icon-192x192.png", // Removed for troubleshooting
       },
       data: {
         motorcycleId: motorcycleId,
