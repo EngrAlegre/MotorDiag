@@ -478,12 +478,11 @@ export default function SettingsPage() {
                         </div>
                         <Button variant="default" size="sm" onClick={requestPermission}>
                           <Save className="mr-2 h-3 w-3"/>
-                          Enable Notifications & Save Token
+                          Setup Notifications
                         </Button>
                       </div>
                        <p className="text-xs text-muted-foreground mt-2">
-                          This will request notification permission. If granted, an FCM token will be generated for this device and saved to your user profile in the database, enabling push notifications.
-                          Ensure your VAPID key is correctly configured.
+                          Clicking this button will request notification permission. If granted, an FCM token will be generated for this device and saved to your user profile in the database, enabling push notifications. Ensure your VAPID key is correctly configured.
                        </p>
                       {notificationHookError && (
                         <Alert variant="destructive" className="mt-3">
@@ -708,4 +707,3 @@ export default function SettingsPage() {
     </ProtectedRoute>
   );
 }
-
