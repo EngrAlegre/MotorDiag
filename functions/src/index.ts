@@ -76,7 +76,7 @@ export const sendMotorcycleAlertNotification = functions.database
     functions.logger.info(`[sendMotorcycleAlertNotification] Partial After data: DTCs count - ${afterData.dtcs?.length || 0}, Params count - ${Object.keys(afterData.parameters || {}).length}, dataValid: ${afterData.dataValid}`);
 
 
-    let alertToSend: { type: 'criticalDtc' | 'warningDtc' | 'parameter'; title: string; body: string; dtc?: DTC; paramName?: string } | null = null;
+    let alertToSend: { type: 'criticalDtc' | 'warningDtc' | 'parameter'; title: string; body: string; dtc?: DTC; paramName?: string; severity?: 'critical' | 'warning' | 'info' } | null = null;
 
     // 1. Check for new/escalated Critical DTCs
     if (afterData.dtcs) {
@@ -92,6 +92,7 @@ export const sendMotorcycleAlertNotification = functions.database
               title: "🚨 Critical Motorcycle Alert!",
               body: `DTC: ${dtcAfter.code} - ${dtcAfter.description}. Immediate attention required.`,
               dtc: dtcAfter,
+              severity: 'critical',
             };
             functions.logger.info(`[sendMotorcycleAlertNotification] Identified new/escalated critical DTC: ${dtcAfter.code}. AlertToSend SET.`);
             break; 
@@ -104,89 +105,154 @@ export const sendMotorcycleAlertNotification = functions.database
       functions.logger.info(`[sendMotorcycleAlertNotification] No DTCs in afterData to check for critical alerts.`);
     }
 
-    // 2. If no critical alert, check for new/escalated Warning DTCs
+    // 2. If no critical alert from DTCs, check for new/escalated Warning DTCs
     if (!alertToSend && afterData.dtcs) {
-      functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert. Checking ${afterData.dtcs.length} DTCs in afterData for warning alerts.`);
+      functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert from DTCs. Checking ${afterData.dtcs.length} DTCs in afterData for warning alerts.`);
       for (const dtcAfter of afterData.dtcs) {
         functions.logger.info(`[sendMotorcycleAlertNotification] Evaluating DTC: ${dtcAfter.code}, Severity: ${dtcAfter.severity}`);
         if (dtcAfter.severity === "warning") {
           const dtcBefore = findDtc(beforeData?.dtcs, dtcAfter.code);
           functions.logger.info(`[sendMotorcycleAlertNotification] Warning DTC ${dtcAfter.code} found. Before state: ${JSON.stringify(dtcBefore)}`);
-          if (!dtcBefore || (dtcBefore.severity !== "warning" && dtcBefore.severity !== "critical")) {
+          if (!dtcBefore || (dtcBefore.severity !== "warning" && dtcBefore.severity !== "critical")) { // only alert if it's new or was less severe
              alertToSend = {
               type: 'warningDtc',
               title: "⚠️ Motorcycle Warning",
               body: `DTC: ${dtcAfter.code} - ${dtcAfter.description}. Please check soon.`,
               dtc: dtcAfter,
+              severity: 'warning',
             };
             functions.logger.info(`[sendMotorcycleAlertNotification] Identified new/escalated warning DTC: ${dtcAfter.code}. AlertToSend SET.`);
-            break;
+            // Don't break for warnings, a critical parameter might still be found
           } else {
             functions.logger.info(`[sendMotorcycleAlertNotification] Warning DTC ${dtcAfter.code} was already present with same or higher severity. No new alert.`);
           }
         }
       }
     } else if (!alertToSend && !afterData.dtcs) { 
-      functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert and no DTCs in afterData to check for warning alerts.`);
+      functions.logger.info(`[sendMotorcycleAlertNotification] No critical alert from DTCs and no DTCs in afterData to check for warning alerts.`);
     }
 
-
-    // 3. If no DTC alert, check for newly invalid parameters
-    if (!alertToSend && afterData.parameters) {
-      functions.logger.info(`[sendMotorcycleAlertNotification] No DTC alert. Checking parameters for newly invalid state.`);
+    // 3. Parameter checks. A critical parameter (isValid:false) can override a warning DTC.
+    // A warning parameter (out of range) will only be set if no DTC alert or critical parameter alert is already set.
+    if (afterData.parameters) {
+      functions.logger.info(`[sendMotorcycleAlertNotification] Checking parameters. Current alertToSend: ${JSON.stringify(alertToSend)}`);
+      let foundCriticalParameter = false;
       for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
-        functions.logger.info(`[sendMotorcycleAlertNotification] Evaluating Parameter: ${paramName}, IsValid: ${paramAfter.isValid}, Value: ${paramAfter.value}`);
+        functions.logger.info(`[sendMotorcycleAlertNotification] Evaluating Parameter: ${paramName}, IsValid: ${paramAfter.isValid}, Value: ${paramAfter.value}, Min: ${paramAfter.min}, Max: ${paramAfter.max}`);
+        const paramBefore = beforeData?.parameters?.[paramName];
+
+        // Check 1: Parameter newly became invalid (sensor fault or severe value as per ESP32)
         if (paramAfter.isValid === false) {
-          const paramBefore = beforeData?.parameters?.[paramName];
-          functions.logger.info(`[sendMotorcycleAlertNotification] Invalid Parameter ${paramName} found. Before state isValid: ${paramBefore?.isValid}`);
-          if (!paramBefore || paramBefore.isValid === true) {
-            functions.logger.info(`[sendMotorcycleAlertNotification] CONDITION MET: Parameter ${paramName} is newly invalid. Before: ${paramBefore?.isValid}, After: ${paramAfter.isValid}`);
+          if (!paramBefore || paramBefore.isValid === true) { // Newly invalid
+            functions.logger.info(`[sendMotorcycleAlertNotification] CONDITION MET (isValid): Parameter ${paramName} is newly invalid. Before isValid: ${paramBefore?.isValid}, After isValid: ${paramAfter.isValid}`);
             alertToSend = {
               type: 'parameter',
-              title: "🔧 Motorcycle Parameter Alert",
-              body: `Parameter "${paramName}" is reporting an issue (value: ${paramAfter.value} ${paramAfter.unit || ''}).`,
+              title: "🔧 Critical Parameter Alert",
+              body: `Parameter "${paramName}" reporting a critical issue or sensor fault (value: ${paramAfter.value} ${paramAfter.unit || ''}).`,
               paramName: paramName,
+              severity: 'critical',
             };
-            functions.logger.info(`[sendMotorcycleAlertNotification] Identified newly invalid parameter: ${paramName}. AlertToSend SET.`);
-            break;
+            functions.logger.info(`[sendMotorcycleAlertNotification] Identified newly invalid (critical) parameter: ${paramName}. AlertToSend SET (overwriting previous if any).`);
+            foundCriticalParameter = true;
+            break; // Found a critical parameter, this is the highest priority among parameters
           } else {
-            functions.logger.info(`[sendMotorcycleAlertNotification] Parameter ${paramName} was already invalid. No new alert.`);
+            functions.logger.info(`[sendMotorcycleAlertNotification] Parameter ${paramName} was already invalid. No new alert based on 'isValid' status.`);
           }
         }
+      } // End of critical parameter check loop
+
+      // Check 2: Parameter value newly went out of its own min/max normal range (if no critical parameter alert was already set)
+      if (!foundCriticalParameter && (!alertToSend || alertToSend.severity !== 'critical')) { // Only proceed if no critical alert already set
+        for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
+            if (paramAfter.isValid === true) { // Only consider if sensor itself is valid
+                const isOutOfRangeAfter = paramAfter.value < paramAfter.min || paramAfter.value > paramAfter.max;
+                const paramBefore = beforeData?.parameters?.[paramName];
+                
+                // Determine if it was out of range before
+                let isOutOfRangeBefore = false;
+                if (paramBefore && paramBefore.isValid === true) { // Only if paramBefore was valid can we check its range
+                    isOutOfRangeBefore = paramBefore.value < paramBefore.min || paramBefore.value > paramBefore.max;
+                }
+
+                if (isOutOfRangeAfter && (!paramBefore || paramBefore.isValid === false || !isOutOfRangeBefore)) {
+                    // Condition: (Currently out of range) AND 
+                    //            ( (was not present before) OR 
+                    //              (was previously invalid itself, now valid but out of range) OR 
+                    //              (was previously valid AND in range) )
+                    functions.logger.info(`[sendMotorcycleAlertNotification] CONDITION MET (value vs min/max): Parameter ${paramName} value ${paramAfter.value} newly out of range (${paramAfter.min}-${paramAfter.max}). Before: ${paramBefore ? `value ${paramBefore.value}, isValid ${paramBefore.isValid}, inRange ${!isOutOfRangeBefore}` : 'not present'}`);
+                    
+                    // Set as warning, but only if no alert is set yet, or if current alert is also a warning (to allow multiple param warnings if we change logic later, though current logic only sets one)
+                    // Crucially, DO NOT overwrite a CRITICAL DTC alert.
+                    if (!alertToSend || alertToSend.severity === 'warning') {
+                        alertToSend = {
+                            type: 'parameter',
+                            title: "⚠️ Parameter Warning",
+                            body: `Parameter "${paramName}" value (${paramAfter.value} ${paramAfter.unit || ''}) is outside normal range (${paramAfter.min} - ${paramAfter.max} ${paramAfter.unit || ''}).`,
+                            paramName: paramName,
+                            severity: 'warning',
+                        };
+                        functions.logger.info(`[sendMotorcycleAlertNotification] Identified parameter with value newly out of range: ${paramName}. AlertToSend SET (warning).`);
+                        // Don't break for parameter warnings; a critical DTC might have been missed or another param could be critical.
+                        // However, current logic sets only one alertToSend.
+                    } else {
+                         functions.logger.info(`[sendMotorcycleAlertNotification] Parameter ${paramName} value out of range, but a more severe alert (${alertToSend.type}, ${alertToSend.severity}) is already set. Skipping this parameter warning.`);
+                    }
+                } else if (isOutOfRangeAfter && paramBefore && paramBefore.isValid === true && isOutOfRangeBefore) {
+                    functions.logger.info(`[sendMotorcycleAlertNotification] Parameter ${paramName} value ${paramAfter.value} is out of range, but was also out of range before. No new alert.`);
+                } else if (!isOutOfRangeAfter && paramAfter.isValid === true) {
+                     functions.logger.info(`[sendMotorcycleAlertNotification] Parameter ${paramName} value ${paramAfter.value} is valid and within range (${paramAfter.min}-${paramAfter.max}).`);
+                }
+            }
+        }
       }
-    } else if (!alertToSend && !afterData.parameters) { 
+    } else if (!alertToSend) { 
        functions.logger.info(`[sendMotorcycleAlertNotification] No DTC alert and no parameters in afterData to check.`);
     }
     
     // 4. Handle initial data creation (if beforeData did not exist)
+    // This part also needs to respect the new parameter logic.
     if (!change.before.exists() && !alertToSend) {
         functions.logger.info("[sendMotorcycleAlertNotification] This is an initial data write (beforeData does not exist). Checking for alerts in new data.");
+        // Check Critical DTCs first
         if (afterData.dtcs) {
             const criticalDtc = afterData.dtcs.find(d => d.severity === 'critical');
             if (criticalDtc) {
-                 alertToSend = { type: 'criticalDtc', title: "🚨 Critical Motorcycle Alert!", body: `DTC: ${criticalDtc.code} - ${criticalDtc.description}. Immediate attention required.`, dtc: criticalDtc };
-                 functions.logger.info(`[sendMotorcycleAlertNotification] Identified critical DTC on creation: ${criticalDtc.code}. AlertToSend SET.`);
-            } else {
-                const warningDtc = afterData.dtcs.find(d => d.severity === 'warning');
-                if (warningDtc) {
-                    alertToSend = { type: 'warningDtc', title: "⚠️ Motorcycle Warning", body: `DTC: ${warningDtc.code} - ${warningDtc.description}. Please check soon.`, dtc: warningDtc };
-                    functions.logger.info(`[sendMotorcycleAlertNotification] Identified warning DTC on creation: ${warningDtc.code}. AlertToSend SET.`);
-                }
+                 alertToSend = { type: 'criticalDtc', title: "🚨 Critical Motorcycle Alert!", body: `DTC: ${criticalDtc.code} - ${criticalDtc.description}. Immediate attention required.`, dtc: criticalDtc, severity: 'critical' };
+                 functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write: Identified critical DTC: ${criticalDtc.code}. AlertToSend SET.`);
             }
         }
+        // Check Warning DTCs if no critical DTC
+        if (!alertToSend && afterData.dtcs) {
+            const warningDtc = afterData.dtcs.find(d => d.severity === 'warning');
+            if (warningDtc) {
+                alertToSend = { type: 'warningDtc', title: "⚠️ Motorcycle Warning", body: `DTC: ${warningDtc.code} - ${warningDtc.description}. Please check soon.`, dtc: warningDtc, severity: 'warning' };
+                functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write: Identified warning DTC: ${warningDtc.code}. AlertToSend SET.`);
+            }
+        }
+        // Check Parameters if no DTC alert yet
         if (!alertToSend && afterData.parameters) { 
+            let criticalParamFoundOnCreate = false;
             for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
                  functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write - Evaluating Parameter: ${paramName}, IsValid: ${paramAfter.isValid}, Value: ${paramAfter.value}`);
-                if (paramAfter.isValid === false) {
-                    functions.logger.info(`[sendMotorcycleAlertNotification] INITIAL WRITE: Parameter ${paramName} is invalid. Value: ${paramAfter.value}`);
-                    alertToSend = { type: 'parameter', title: "🔧 Motorcycle Parameter Alert", body: `Parameter "${paramName}" is reporting an issue (value: ${paramAfter.value} ${paramAfter.unit || ''}).`, paramName: paramName };
-                     functions.logger.info(`[sendMotorcycleAlertNotification] Identified invalid parameter on creation: ${paramName}. AlertToSend SET.`);
+                if (paramAfter.isValid === false) { // Treat isValid:false as critical on create
+                    alertToSend = { type: 'parameter', title: "🔧 Critical Parameter Alert", body: `Parameter "${paramName}" reporting a critical issue or sensor fault (value: ${paramAfter.value} ${paramAfter.unit || ''}).`, paramName: paramName, severity: 'critical' };
+                     functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write: Identified invalid (critical) parameter: ${paramName}. AlertToSend SET.`);
+                    criticalParamFoundOnCreate = true;
                     break; 
+                }
+            }
+            if (!criticalParamFoundOnCreate && !alertToSend) { // Check for out-of-range warnings if no critical param found
+                 for (const [paramName, paramAfter] of Object.entries(afterData.parameters)) {
+                    if (paramAfter.isValid === true && (paramAfter.value < paramAfter.min || paramAfter.value > paramAfter.max)) {
+                        alertToSend = { type: 'parameter', title: "⚠️ Parameter Warning", body: `Parameter "${paramName}" value (${paramAfter.value} ${paramAfter.unit || ''}) is outside normal range (${paramAfter.min} - ${paramAfter.max} ${paramAfter.unit || ''}).`, paramName: paramName, severity: 'warning' };
+                        functions.logger.info(`[sendMotorcycleAlertNotification] Initial Write: Identified parameter with value out of range: ${paramName}. AlertToSend SET.`);
+                        break; // Take the first out-of-range parameter as a warning
+                    }
                 }
             }
         }
         if (!alertToSend) {
-             functions.logger.info("[sendMotorcycleAlertNotification] Initial data write, but no critical/warning DTCs or invalid parameters found in new data.");
+             functions.logger.info("[sendMotorcycleAlertNotification] Initial data write, but no critical/warning DTCs or parameter issues found in new data.");
         }
     } else if (change.before.exists() && !alertToSend) { 
         functions.logger.info("[sendMotorcycleAlertNotification] beforeData existed, and no new/escalated alerts found through diffing.");
@@ -199,7 +265,7 @@ export const sendMotorcycleAlertNotification = functions.database
     }
     
     functions.logger.info(
-      `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}. Details: ${JSON.stringify(alertToSend)}. Checking user notification preference for user: ${userId}`
+      `[sendMotorcycleAlertNotification] Alert identified. Type: ${alertToSend.type}, Severity: ${alertToSend.severity || 'N/A'}. Details: ${JSON.stringify(alertToSend)}. Checking user notification preference for user: ${userId}`
     );
 
     let userAppNotificationsEnabled = true; 
@@ -250,7 +316,13 @@ export const sendMotorcycleAlertNotification = functions.database
     }
 
     const finalAlertBody = `${alertToSend.body.startsWith('DTC:') || alertToSend.body.startsWith('Parameter') ? '' : 'Your ' + motorcycleDisplayName + ' reports: '}${alertToSend.body}`;
-    const appNotificationType = alertToSend.type === 'criticalDtc' ? 'critical' : (alertToSend.type === 'warningDtc' ? 'warning' : 'info');
+    // Determine app notification type based on severity primarily
+    let appNotificationType: 'critical' | 'warning' | 'info' = 'info';
+    if (alertToSend.severity === 'critical') {
+      appNotificationType = 'critical';
+    } else if (alertToSend.severity === 'warning') {
+      appNotificationType = 'warning';
+    }
 
 
     // Create and store In-App Notification
@@ -266,7 +338,7 @@ export const sendMotorcycleAlertNotification = functions.database
       timestamp: admin.database.ServerValue.TIMESTAMP,
       read: false,
       code: alertToSend.dtc?.code || alertToSend.paramName || '',
-      severity: alertToSend.dtc?.severity || (alertToSend.type === 'parameter' ? 'warning' : ''),
+      severity: alertToSend.severity || (alertToSend.type === 'parameter' ? 'warning' : 'info'), // Default severity for parameters if not set
       link: `/dashboard/${motorcycleId}`,
     };
 
@@ -329,9 +401,9 @@ export const sendMotorcycleAlertNotification = functions.database
       },
       data: {
         motorcycleId: motorcycleId,
-        alertType: appNotificationType,
+        alertType: appNotificationType, // Use the derived appNotificationType
         code: alertToSend.dtc?.code || alertToSend.paramName || '',
-        severity: alertToSend.dtc?.severity || (alertToSend.type === 'parameter' ? 'warning' : ''), 
+        severity: alertToSend.severity || (alertToSend.type === 'parameter' ? 'warning' : 'info'), 
         click_action: `/dashboard/${motorcycleId}`, 
       },
     };
