@@ -67,7 +67,7 @@ export default function MotorcycleDashboardPage() {
         <Header />
         <main className="flex-1 p-4 md:p-8">
           <div className="container mx-auto max-w-7xl">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8">Dashboard for {motorcycleId}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 break-all">Dashboard for {motorcycleId}</h1>
 
             {error && !showData && (
               error.startsWith("No data at path") ? (
@@ -75,7 +75,7 @@ export default function MotorcycleDashboardPage() {
                   <Info className="h-4 w-4 text-primary" />
                   <AlertTitle className="text-primary">Waiting for Initial Data</AlertTitle>
                   <AlertDescription>
-                    Currently waiting for data at Firebase path: <code className="font-mono bg-muted px-1 py-0.5 rounded text-sm">{firebasePath}</code>.
+                    Currently waiting for data at Firebase path: <code className="font-mono bg-muted px-1 py-0.5 rounded text-sm break-all">{firebasePath}</code>.
                     <br />
                     Once data is received from your motorcycle, the dashboard will update.
                     If you&apos;ve already sent data, please double-check the path in your Firebase Realtime Database and ensure your device ID matches.
