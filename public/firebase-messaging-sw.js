@@ -1,12 +1,20 @@
 
-// public/firebase-messaging-sw.js
+// Scripts for Firebase products will be imported here
+// Ensure you have the VAPID_KEY set correctly below.
+// This key is obtained from your Firebase project settings:
+// Project settings > Cloud Messaging > Web configuration (bottom) > Web Push certificates.
 
-// IMPORTANT: Import the Firebase SDKs using importScripts (for service workers)
-// Use the "compat" versions of the Firebase SDKs for this method.
+self.FIREBASE_APP_ID_VAR = '1:375727641154:web:542ab93a8ae989ed8e93db'; // Your Firebase App ID
+
+// IMPORTANT: REPLACE WITH YOUR ACTUAL VAPID KEY
+const VAPID_KEY = "BAvhUFbdb7XCE-loO_Xn9XekWZ0wEaeIzgj-yy8RcqR458ZXuSVHBML8KPa9NBOuKEYqWialsc-xBlIaFc2tv3o";
+
+
+// Import and initialize the Firebase SDK
+// These are the "compat" libraries suitable for service workers using importScripts
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
-// Your web app's Firebase configuration (ensure this matches your app's config)
 const firebaseConfig = {
   apiKey: "AIzaSyCTMt2Ou_5y7eiw9-XoCCf28ZdRgBDjfvg",
   authDomain: "motor-42313.firebaseapp.com",
@@ -18,75 +26,51 @@ const firebaseConfig = {
   databaseURL: "https://motor-42313-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
-// Initialize Firebase
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-} else {
-  firebase.app(); // if already initialized, use that one
-}
+firebase.initializeApp(firebaseConfig);
 
-// Retrieve an instance of Firebase Messaging so that it can handle background messages.
+// Retrieve an instance of Firebase Messaging so that it can handle background
+// messages.
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  console.log(
-    '[firebase-messaging-sw.js] Received background message ',
-    payload
-  );
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-  // Customize notification here
-  const notificationTitle = payload.notification?.title || 'New MotoVision Alert';
+  const notificationTitle = payload.notification?.title || 'New Message';
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new update from MotoVision.',
-    icon: payload.notification?.icon || '/icons/icon-192x192.png', // A default icon
-    badge: '/icons/badge-72x72.png', // Optional: for Android notification drawer
-    data: payload.data // Pass along any data from the FCM message
+    body: payload.notification?.body || 'You have a new message.',
+    icon: payload.notification?.icon || '/icons/icon-192x192.png', // Default icon
+    data: payload.data // Pass along any data for click actions
   };
 
-  // Check if self.registration is available
-  if (self.registration && self.registration.showNotification) {
-    self.registration.showNotification(notificationTitle, notificationOptions);
-  } else {
-    console.error('[firebase-messaging-sw.js] self.registration.showNotification is not available.');
-  }
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Optional: Handle notification click
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close(); // Close the notification
+  event.notification.close();
+  console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification.data);
 
-  const notificationData = event.notification.data;
-  console.log('[firebase-messaging-sw.js] Notification click received. Data:', notificationData);
-
-  // The URL to open when the notification is clicked
-  // Use click_action from FCM data if available, otherwise a default path
-  const targetUrl = notificationData?.click_action || event.notification.data?.FCM_MSG?.data?.click_action || '/';
+  const clickAction = event.notification.data?.click_action || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If a window hosting the PWA is already open and matches the target URL, focus it
-      for (const client of clientList) {
-        // Check if client.url matches the base of targetUrl or the full targetUrl
-        const clientBaseUrl = new URL(client.url).origin + new URL(client.url).pathname;
-        const targetBaseUrl = new URL(targetUrl, self.location.origin).origin + new URL(targetUrl, self.location.origin).pathname;
-        
-        if (clientBaseUrl === targetBaseUrl && 'focus' in client) {
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        // Check if the client is already open and focused
+        if (client.url === self.location.origin + clickAction && 'focus' in client) {
           return client.focus();
         }
       }
-      // If no window is open or matches, open a new one
+      // If not, open a new window
       if (clients.openWindow) {
-        return clients.openWindow(new URL(targetUrl, self.location.origin).href);
+        return clients.openWindow(clickAction);
       }
     })
   );
 });
 
-// This is important to ensure the service worker activates quickly.
-self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting());
-});
-
+// Optional: console log to confirm SW is active (for debugging)
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  console.log('[firebase-messaging-sw.js] Service worker activated.');
+  // If using clients.claim() it's good practice but ensure you understand its implications
+  // event.waitUntil(self.clients.claim());
 });
